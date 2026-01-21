@@ -235,10 +235,14 @@ function AppSidebar({ pathname, isAdmin, profile, onLogout }: AppSidebarProps) {
             <SidebarLabel>Profil</SidebarLabel>
           </SidebarItem>
           
-          <SidebarItem onClick={onLogout}>
-            <ArrowRightStartOnRectangleIcon data-slot="icon" />
-            <SidebarLabel>Çıkış Yap</SidebarLabel>
-          </SidebarItem>
+          {/* Logout butonu - SidebarItem onClick sorunu nedeniyle düz button kullanıyoruz */}
+          <button
+            onClick={onLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-base/6 font-medium text-sidebar-text hover:bg-sidebar-hover sm:py-2 sm:text-sm/5"
+          >
+            <ArrowRightStartOnRectangleIcon className="size-6 shrink-0 fill-sidebar-text-muted sm:size-5" />
+            <span className="truncate">Çıkış Yap</span>
+          </button>
         </SidebarSection>
       </SidebarFooter>
     </Sidebar>
@@ -302,10 +306,14 @@ function AppNavbar({ profile, isAdmin, onLogout, getInitials }: AppNavbarProps) 
 
             <DropdownDivider />
 
-            <DropdownItem onClick={onLogout}>
-              <ArrowRightStartOnRectangleIcon data-slot="icon" />
-              Çıkış Yap
-            </DropdownItem>
+            {/* Logout butonu - DropdownItem onClick için düz button kullanıyoruz */}
+            <button
+              onClick={onLogout}
+              className="group cursor-default rounded-lg px-3.5 py-2.5 focus:outline-hidden sm:px-3 sm:py-1.5 text-left text-base/6 text-zinc-950 sm:text-sm/6 hover:bg-blue-500 hover:text-white col-span-full grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] items-center w-full"
+            >
+              <ArrowRightStartOnRectangleIcon className="col-start-1 row-start-1 mr-2.5 -ml-0.5 size-5 sm:mr-2 sm:size-4 text-zinc-500 group-hover:text-white" />
+              <span className="col-start-2 row-start-1">Çıkış Yap</span>
+            </button>
           </DropdownMenu>
         </Dropdown>
       </NavbarSection>
