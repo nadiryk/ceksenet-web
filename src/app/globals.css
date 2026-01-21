@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  /* Sidebar Renkleri */
+  --color-sidebar-bg: #e0f2fe;
+  --color-sidebar-hover: #bae6fd;
+  --color-sidebar-active: #7dd3fc;
+  --color-sidebar-text: #0c4a6e;
+  --color-sidebar-text-muted: #0369a1;
+  --color-sidebar-border: #bae6fd;
+  
+  /* İçerik Renkleri */
+  --color-content-bg: #f1f5f9;
+  --color-card-bg: #f8f9fa;
+  --color-card-border: #e2e8f0;
+  
+  /* Durum Badge Renkleri */
+  --color-status-portfoy: #3b82f6;
+  --color-status-bankada: #a855f7;
+  --color-status-ciro: #f97316;
+  --color-status-tahsil: #22c55e;
+  --color-status-karsiliksiz: #ef4444;
+  
+  /* Genel Renkler */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+}
+
+/* Base Styles */
+body {
+  background: var(--color-content-bg);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Button cursor fix (v4 default değişti) */
+button, [type="button"], [type="submit"], [type="reset"] {
+  cursor: pointer;
+}
