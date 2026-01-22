@@ -90,8 +90,10 @@ export async function POST(request: NextRequest) {
     const adSoyad = body.ad_soyad.trim()
     const role: 'admin' | 'normal' = body.role === 'admin' ? 'admin' : 'normal'
     
-    // Username unique kontrolü (normal client ile)
-    const { data: existingUsername } = await supabase
+    // Username unique kontrolü (admin client ile)
+    const adminClient = createAdminClient()
+    
+    const { data: existingUsername } = await adminClient
       .from('profiles')
       .select('id')
       .eq('username', username)
@@ -100,9 +102,6 @@ export async function POST(request: NextRequest) {
     if (existingUsername) {
       return errorResponse('Bu kullanıcı adı zaten kullanılıyor')
     }
-    
-    // Admin client sadece Auth API için
-    const adminClient = createAdminClient()
     
     // Supabase Auth'a kullanıcı oluştur
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
@@ -129,8 +128,8 @@ export async function POST(request: NextRequest) {
       return serverErrorResponse('Kullanıcı oluşturulamadı')
     }
     
-    // Profiles tablosuna ekle (normal client ile)
-    const { data: profile, error: profileError } = await supabase
+    // Profiles tablosuna ekle (admin client ile - RLS bypass)
+    const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .insert({
         id: authData.user.id,
