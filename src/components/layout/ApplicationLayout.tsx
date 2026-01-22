@@ -67,22 +67,39 @@ export function ApplicationLayout({ children }: ApplicationLayoutProps) {
   const router = useRouter()
   const { profile, isAdmin } = useAuth()
 
-  // Handle logout
+  // Handle logout with timeout fallback
   const handleLogout = async () => {
-    console.log('handleLogout called') // DEBUG
     try {
       const supabase = createClient()
-      console.log('supabase client created') // DEBUG
-      const { error } = await supabase.auth.signOut()
-      console.log('signOut completed, error:', error) // DEBUG
-      if (error) {
-        console.error('Logout error:', error)
-        return
+      
+      // signOut with 3 second timeout
+      const signOutPromise = supabase.auth.signOut()
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SignOut timeout')), 3000)
+      )
+      
+      try {
+        await Promise.race([signOutPromise, timeoutPromise])
+      } catch {
+        // signOut failed or timed out, continue with manual cleanup
+        console.warn('SignOut failed or timed out, performing manual cleanup')
       }
-      router.push('/login')
-      router.refresh()
+      
+      // Manual cleanup: clear Supabase tokens from localStorage
+      if (typeof window !== 'undefined') {
+        // Find and remove all Supabase auth keys
+        const keysToRemove = Object.keys(localStorage).filter(key => 
+          key.startsWith('sb-') || key.includes('supabase')
+        )
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      }
+      
+      // Hard redirect to login page (more reliable than router.push)
+      window.location.href = '/login'
     } catch (err) {
       console.error('Logout exception:', err)
+      // Even if everything fails, redirect to login
+      window.location.href = '/login'
     }
   }
 
@@ -246,13 +263,10 @@ function AppSidebar({ pathname, isAdmin, profile, onLogout }: AppSidebarProps) {
             <SidebarLabel>Profil</SidebarLabel>
           </SidebarItem>
           
-          {/* Logout butonu - SidebarItem onClick sorunu nedeniyle düz button kullanıyoruz */}
+          {/* Logout butonu */}
           <button
             type="button"
-            onClick={() => {
-              console.log('Sidebar logout button clicked') // DEBUG
-              onLogout()
-            }}
+            onClick={onLogout}
             className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-base/6 font-medium text-sidebar-text hover:bg-sidebar-hover sm:py-2 sm:text-sm/5"
           >
             <ArrowRightStartOnRectangleIcon className="size-6 shrink-0 fill-sidebar-text-muted sm:size-5" />
@@ -321,13 +335,10 @@ function AppNavbar({ profile, isAdmin, onLogout, getInitials }: AppNavbarProps) 
 
             <DropdownDivider />
 
-            {/* Logout butonu - DropdownItem onClick için düz button kullanıyoruz */}
+            {/* Logout butonu */}
             <button
               type="button"
-              onClick={() => {
-                console.log('Navbar logout button clicked') // DEBUG
-                onLogout()
-              }}
+              onClick={onLogout}
               className="group cursor-default rounded-lg px-3.5 py-2.5 focus:outline-hidden sm:px-3 sm:py-1.5 text-left text-base/6 text-zinc-950 sm:text-sm/6 hover:bg-blue-500 hover:text-white col-span-full grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] items-center w-full"
             >
               <ArrowRightStartOnRectangleIcon className="col-start-1 row-start-1 mr-2.5 -ml-0.5 size-5 sm:mr-2 sm:size-4 text-zinc-500 group-hover:text-white" />
