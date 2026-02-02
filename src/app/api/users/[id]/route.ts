@@ -141,8 +141,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return errorResponse('Güncellenecek alan bulunamadı')
     }
     
-    // Update (normal client ile - RLS policies ayarlanmalı)
-    const { data, error } = await supabase
+    // Update (admin client ile - RLS bypass)
+    const adminClient = createAdminClient()
+    const { data, error } = await adminClient
       .from('profiles')
       .update(updateData)
       .eq('id', id)
