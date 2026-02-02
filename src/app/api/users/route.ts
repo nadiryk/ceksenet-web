@@ -128,25 +128,26 @@ export async function POST(request: NextRequest) {
       return serverErrorResponse('Kullanıcı oluşturulamadı')
     }
     
-    // Profiles tablosuna ekle (admin client ile - RLS bypass)
+    // Trigger zaten profil oluşturdu (handle_new_user)
+    // Şimdi doğru değerlerle güncelliyoruz (username email olarak kaydedilmişti)
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .insert({
-        id: authData.user.id,
+      .update({
         username,
         ad_soyad: adSoyad,
         role,
       })
+      .eq('id', authData.user.id)
       .select()
       .single()
     
     if (profileError) {
-      console.error('Profile oluşturma hatası:', profileError)
-      
+      console.error('Profile güncelleme hatası:', profileError)
+
       // Auth kullanıcısını geri sil (rollback)
       await adminClient.auth.admin.deleteUser(authData.user.id)
-      
-      return serverErrorResponse('Kullanıcı profili oluşturulurken hata oluştu')
+
+      return serverErrorResponse('Kullanıcı profili güncellenirken hata oluştu')
     }
     
     return successResponse(profile, 201)
