@@ -5,9 +5,7 @@
 // Schedule: Her 6 saatte bir (netlify.toml'da tanimli)
 // ============================================
 
-import type { Config, Context } from "@netlify/functions"
-
-export default async (req: Request, context: Context) => {
+export default async () => {
   console.log("Keep-alive function calisiyor:", new Date().toISOString())
 
   try {
@@ -72,6 +70,6 @@ export default async (req: Request, context: Context) => {
 }
 
 // Netlify Scheduled Function config
-export const config: Config = {
-  schedule: "0 */6 * * *", // Her 6 saatte bir
+export const config = {
+  schedule: "0 */6 * * *",
 }
