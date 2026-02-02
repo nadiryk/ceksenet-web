@@ -1,0 +1,29 @@
+# ============================================
+# CekSenet Web - Netlify Configuration
+# ============================================
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Next.js Plugin (otomatik algılanır ama explicit belirtmek iyi)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment Variables (Netlify Dashboard'dan da eklenebilir)
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
+# Scheduled Function - Keep Alive (Supabase'i aktif tutar)
+# Her 6 saatte bir calısır (00:00, 06:00, 12:00, 18:00 UTC)
+[functions."keep-alive"]
+  schedule = "0 */6 * * *"
+
+# Headers - Guvenlik
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
