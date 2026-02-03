@@ -219,7 +219,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
     try {
       const response = await fetch(`/api/evraklar/${evrakId}/durum`, {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           yeni_durum: selectedDurum,
@@ -246,8 +246,11 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   // Render Helpers
   // ============================================
 
-  const formatDateTime = (dateString: string) => {
+  const formatDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
     const date = new Date(dateString)
+    // Unix epoch kontrolü (geçersiz tarih)
+    if (date.getFullYear() < 2000) return '-'
     return date.toLocaleString('tr-TR', {
       day: '2-digit',
       month: '2-digit',
