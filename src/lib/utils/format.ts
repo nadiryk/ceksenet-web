@@ -29,9 +29,18 @@ export function formatCurrencyShort(amount: number): string {
 
 /**
  * Tarihi formatla (26 Ara 2025)
+ * Null, undefined veya epoch tarihi (1970) için "-" döndürür
  */
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+
   const date = new Date(dateString)
+
+  // Geçersiz tarih veya epoch yılı (1970) kontrolü
+  if (isNaN(date.getTime()) || date.getFullYear() <= 1970) {
+    return '-'
+  }
+
   return new Intl.DateTimeFormat('tr-TR', {
     day: 'numeric',
     month: 'short',
@@ -52,9 +61,18 @@ export function formatDateShort(dateString: string): string {
 
 /**
  * Tarih ve saat formatla (26 Ara 2025, 14:30)
+ * Null, undefined veya epoch tarihi (1970) için "-" döndürür
  */
-export function formatDateTime(dateString: string): string {
+export function formatDateTime(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+
   const date = new Date(dateString)
+
+  // Geçersiz tarih veya epoch yılı (1970) kontrolü
+  if (isNaN(date.getTime()) || date.getFullYear() <= 1970) {
+    return '-'
+  }
+
   return new Intl.DateTimeFormat('tr-TR', {
     day: 'numeric',
     month: 'short',
