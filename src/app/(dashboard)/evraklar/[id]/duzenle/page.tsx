@@ -403,7 +403,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
           <h3 className="text-lg font-semibold text-red-700">Hata</h3>
           <p className="mt-2 text-red-600">{loadError}</p>
           <Button className="mt-4" onClick={() => router.push('/evraklar')}>
-            Evraklara Dön
+            Çek - Senet'e Dön
           </Button>
         </div>
       </div>

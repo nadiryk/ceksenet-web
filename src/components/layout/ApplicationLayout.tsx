@@ -185,7 +185,7 @@ function AppSidebar({ pathname, isAdmin, profile, onLogout }: AppSidebarProps) {
             current={pathname.startsWith('/evraklar')}
           >
             <DocumentTextIcon data-slot="icon" />
-            <SidebarLabel>Evraklar</SidebarLabel>
+            <SidebarLabel>Çek - Senet</SidebarLabel>
           </SidebarItem>
 
           <SidebarItem

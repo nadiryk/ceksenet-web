@@ -1,7 +1,7 @@
 'use client'
 
 // ============================================
-// ÇekSenet Web - Evraklar Listesi Sayfası
+// ÇekSenet Web - Çek - Senet Listesi Sayfası
 // ============================================
 
 import { useEffect, useState, useCallback } from 'react'
@@ -249,9 +249,9 @@ export default function EvraklarPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Heading>Evraklar</Heading>
+          <Heading>Çek - Senet</Heading>
           <Text className="mt-1">
-            {total > 0 ? `Toplam ${total} evrak` : 'Çek ve senet listesi'}
+            {total > 0 ? `Toplam ${total} çek/senet` : 'Çek ve senet listesi'}
           </Text>
         </div>
         <div className="flex gap-2">

@@ -16,7 +16,7 @@ export function DashboardNavbar({ profile }: DashboardNavbarProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Evraklar', href: '/evraklar' },
+    { name: 'Çek - Senet', href: '/evraklar' },
     { name: 'Cariler', href: '/cariler' },
     { name: 'Krediler', href: '/krediler' },
     { name: 'Raporlar', href: '/raporlar' },

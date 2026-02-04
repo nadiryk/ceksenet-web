@@ -472,7 +472,7 @@ export default function CariDetayPage() {
           <Heading level={2} className="text-lg">
             <span className="flex items-center gap-2">
               <DocumentTextIcon className="h-5 w-5" />
-              Evraklar
+              Çek - Senet
               {evrakPagination.total > 0 && (
                 <Badge color="zinc">{evrakPagination.total} kayıt</Badge>
               )}

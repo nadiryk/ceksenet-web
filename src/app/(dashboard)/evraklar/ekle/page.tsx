@@ -295,7 +295,7 @@ export default function EvrakEklePage() {
       <div className="mb-8">
         <Button plain onClick={() => router.push('/evraklar')} className="mb-4">
           <ArrowLeftIcon className="h-5 w-5" />
-          Evraklara Dön
+          Çek - Senet'e Dön
         </Button>
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-600">

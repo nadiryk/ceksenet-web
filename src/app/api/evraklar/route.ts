@@ -96,8 +96,8 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
     
     if (error) {
-      console.error('Evraklar listesi hatası:', error)
-      return serverErrorResponse('Evraklar yüklenirken hata oluştu')
+      console.error('Çek - Senet listesi hatası:', error)
+      return serverErrorResponse('Çek - Senet yüklenirken hata oluştu')
     }
     
     return listResponse(data || [], count || 0, page, limit)

@@ -20,6 +20,11 @@
 [functions."keep-alive"]
   schedule = "0 */6 * * *"
 
+# Scheduled Function - WhatsApp Bildirimleri
+# Her gün saat 09:00'da (Türkiye saati ile 12:00) çalışır
+[functions."whatsapp-cron"]
+  schedule = "0 9 * * *"
+
 # Headers - Guvenlik
 [[headers]]
   for = "/*"

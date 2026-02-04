@@ -198,7 +198,7 @@ export default function DashboardPage() {
         {/* Durum Dağılımı - Pie Chart */}
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <Subheading>Durum Dağılımı</Subheading>
-          <Text className="mt-1 text-sm">Evrakların durumlarına göre dağılımı</Text>
+          <Text className="mt-1 text-sm">Çek - Senet durumlarına göre dağılımı</Text>
           <div className="mt-4">
             <DurumPieChart
               data={data?.durum_dagilimi || []}
@@ -274,8 +274,8 @@ export default function DashboardPage() {
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <Subheading>Son Eklenen Evraklar</Subheading>
-              <Text className="mt-1 text-sm">En son eklenen 5 evrak</Text>
+              <Subheading>Son Eklenen Çek - Senet</Subheading>
+              <Text className="mt-1 text-sm">En son eklenen 5 çek/senet</Text>
             </div>
             <Button outline onClick={() => router.push('/evraklar')}>
               Tümünü Gör
