@@ -34,7 +34,21 @@ export class WhatsAppService {
   }
 
   async initialize() {
-    this.supabase = await createClient();
+    // Dummy Supabase URL'si ise bağlantı kurmaya çalışma
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl && supabaseUrl.includes('dummy')) {
+      console.warn('Dummy Supabase URL tespit edildi, simülasyon modunda çalışılacak');
+      this.supabase = null;
+      return;
+    }
+    
+    try {
+      this.supabase = await createClient();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn('Supabase bağlantısı kurulamadı, simülasyon modunda çalışılacak:', errorMessage);
+      this.supabase = null;
+    }
   }
 
   /**
@@ -42,6 +56,13 @@ export class WhatsAppService {
    */
   async processPendingMessages(): Promise<{ sent: number; failed: number }> {
     if (!this.supabase) await this.initialize();
+
+    // Supabase bağlantısı yoksa simülasyon modunda çalış
+    if (!this.supabase) {
+      console.warn('Supabase bağlantısı yok, simülasyon modunda bekleyen mesaj işleniyor');
+      console.log('Simülasyon: 0 bekleyen mesaj işlendi (veritabanı bağlantısı yok)');
+      return { sent: 0, failed: 0 };
+    }
 
     const { data: pendingMessages, error } = await this.supabase
       .from('whatsapp_loglari')
@@ -55,6 +76,14 @@ export class WhatsAppService {
       return { sent: 0, failed: 0 };
     }
 
+    // Eğer bekleyen mesaj yoksa log yaz
+    if (!pendingMessages || pendingMessages.length === 0) {
+      console.log('Bekleyen WhatsApp mesajı bulunamadı');
+      return { sent: 0, failed: 0 };
+    }
+
+    console.log(`${pendingMessages.length} adet bekleyen WhatsApp mesajı işleniyor...`);
+
     let sent = 0;
     let failed = 0;
 
@@ -65,9 +94,11 @@ export class WhatsAppService {
         if (success) {
           await this.updateMessageStatus(msg.id, 'gonderildi');
           sent++;
+          console.log(`Mesaj gönderildi (ID: ${msg.id}): ${msg.telefon}`);
         } else {
           await this.updateMessageStatus(msg.id, 'hata', 'Gönderim başarısız');
           failed++;
+          console.warn(`Mesaj gönderilemedi (ID: ${msg.id}): ${msg.telefon}`);
         }
       } catch (error: any) {
         console.error(`Mesaj gönderim hatası (ID: ${msg.id}):`, error);
@@ -76,6 +107,7 @@ export class WhatsAppService {
       }
     }
 
+    console.log(`WhatsApp işleme tamamlandı: ${sent} başarılı, ${failed} başarısız`);
     return { sent, failed };
   }
 
@@ -84,6 +116,29 @@ export class WhatsAppService {
    */
   async sendSingleMessage(message: WhatsAppMessage): Promise<boolean> {
     if (!this.supabase) await this.initialize();
+
+    // Supabase bağlantısı yoksa simülasyon modunda doğrudan gönder
+    if (!this.supabase) {
+      console.warn('Supabase bağlantısı yok, simülasyon modunda mesaj gönderiliyor');
+      const simulatedLog: WhatsAppLog = {
+        id: Date.now(),
+        telefon: message.telefon,
+        mesaj: message.mesaj,
+        durum: 'bekliyor',
+        evrak_id: message.evrak_id || undefined,
+        kredi_taksit_id: message.kredi_taksit_id || undefined,
+        gonderim_tarihi: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      };
+      try {
+        const success = await this.sendMessage(simulatedLog);
+        console.log(`Simülasyon sonucu: ${success ? 'başarılı' : 'başarısız'}`);
+        return success;
+      } catch (error: any) {
+        console.error('Simülasyon gönderim hatası:', error);
+        return false;
+      }
+    }
 
     // Önce log kaydı oluştur
     const { data: log, error: insertError } = await this.supabase
@@ -183,6 +238,12 @@ export class WhatsAppService {
   private async updateMessageStatus(id: number, status: 'bekliyor' | 'gonderildi' | 'hata', hata_mesaji?: string): Promise<void> {
     if (!this.supabase) await this.initialize();
 
+    // Supabase bağlantısı yoksa güncelleme yapma
+    if (!this.supabase) {
+      console.warn('Supabase bağlantısı yok, mesaj durumu güncellenemedi (simülasyon)');
+      return;
+    }
+
     const updateData: any = {
       durum: status,
       gonderim_tarihi: status === 'gonderildi' ? new Date().toISOString() : null
@@ -231,17 +292,31 @@ export class WhatsAppService {
   async isWhatsAppActive(): Promise<boolean> {
     if (!this.supabase) await this.initialize();
 
-    const { data: setting, error } = await this.supabase
-      .from('ayarlar')
-      .select('value')
-      .eq('key', 'whatsapp_aktif')
-      .single();
-
-    if (error || !setting) {
+    // Supabase bağlantısı yoksa varsayılan olarak false döndür
+    if (!this.supabase) {
+      console.warn('Supabase bağlantısı yok, WhatsApp aktif değil (simülasyon)');
       return false;
     }
 
-    return setting.value === 'true';
+    try {
+      const { data: setting, error } = await this.supabase
+        .from('ayarlar')
+        .select('value')
+        .eq('key', 'whatsapp_aktif')
+        .single();
+
+      if (error || !setting) {
+        console.warn('WhatsApp aktif ayarı bulunamadı, varsayılan: false', error?.message);
+        return false;
+      }
+
+      const isActive = setting.value === 'true';
+      console.log(`WhatsApp aktif durumu: ${isActive} (veritabanından alındı)`);
+      return isActive;
+    } catch (error: any) {
+      console.error('WhatsApp aktif kontrol hatası:', error);
+      return false;
+    }
   }
 
   /**

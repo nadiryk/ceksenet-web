@@ -42,6 +42,7 @@ import {
   EnvelopeIcon,
   MapPinIcon,
   IdentificationIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/20/solid'
 import {
   formatCurrency,
@@ -53,6 +54,8 @@ import {
   getDurumColor,
   getEvrakTipiLabel,
 } from '@/lib/utils/format'
+import { whatsappService } from '@/lib/whatsapp'
+import { EmailService } from '@/lib/email'
 
 // ============================================
 // Types
@@ -124,6 +127,16 @@ export default function CariDetayPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // WhatsApp gönderim state
+  const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
+  const [whatsAppSuccess, setWhatsAppSuccess] = useState<string | null>(null)
+
+  // Email gönderim state
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
 
   // ============================================
   // Data Fetching
@@ -272,6 +285,117 @@ export default function CariDetayPage() {
   }
 
   // ============================================
+  // WhatsApp Gönderimi
+  // ============================================
+
+  const handleSendWhatsAppMessage = async () => {
+    if (!cari) return
+
+    setIsWhatsAppSending(true)
+    setWhatsAppError(null)
+    setWhatsAppSuccess(null)
+
+    try {
+      // WhatsApp servisini başlat
+      await whatsappService.initialize()
+      
+      // Ayarlardan telefon numarası al
+      const numbers = await whatsappService.getWhatsAppNumbers()
+      if (numbers.length === 0) {
+        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış. Lütfen ayarlar sayfasından bir telefon numarası girin.')
+      }
+
+      // Mesaj şablonu oluştur
+      const message = `*Cari Bilgileri*\n` +
+        `Ad Soyad: ${cari.ad_soyad}\n` +
+        `Tip: ${getCariTipLabel(cari.tip)}\n` +
+        `Telefon: ${cari.telefon || 'Belirtilmemiş'}\n` +
+        `Email: ${cari.email || 'Belirtilmemiş'}\n` +
+        `Vergi No: ${cari.vergi_no || 'Belirtilmemiş'}\n` +
+        `Evrak Sayısı: ${cari.evrak_sayisi}`
+
+      // İlk telefon numarasına gönder
+      const success = await whatsappService.sendSingleMessage({
+        telefon: numbers[0],
+        mesaj: message,
+        cari_id: cari.id
+      })
+
+      if (success) {
+        setWhatsAppSuccess('WhatsApp mesajı başarıyla gönderildi.')
+      } else {
+        throw new Error('WhatsApp mesajı gönderilemedi. Lütfen ayarları kontrol edin.')
+      }
+    } catch (err) {
+      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
+    } finally {
+      setIsWhatsAppSending(false)
+    }
+  }
+
+  // ============================================
+  // Email Gönderimi
+  // ============================================
+
+  const handleSendEmailMessage = async () => {
+    if (!cari) return
+
+    setIsEmailSending(true)
+    setEmailError(null)
+    setEmailSuccess(null)
+
+    try {
+      // Email servisini başlat
+      const emailService = new EmailService()
+      await emailService.initialize()
+
+      // Cari email adresini al (varsa)
+      let toEmail = cari.email || ''
+
+      // Eğer cari email yoksa, ayarlardaki admin email'ine gönder
+      if (!toEmail) {
+        // Ayarlardan admin email al (basitçe geçici)
+        toEmail = 'admin@example.com' // TODO: Ayarlardan al
+      }
+
+      // Email konusu ve içeriği
+      const subject = `Cari Bilgileri - ${cari.ad_soyad}`
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Cari Bilgileri</h2>
+          <p><strong>Ad Soyad:</strong> ${cari.ad_soyad}</p>
+          <p><strong>Tip:</strong> ${getCariTipLabel(cari.tip)}</p>
+          <p><strong>Telefon:</strong> ${cari.telefon || 'Belirtilmemiş'}</p>
+          <p><strong>Email:</strong> ${cari.email || 'Belirtilmemiş'}</p>
+          <p><strong>Vergi No:</strong> ${cari.vergi_no || 'Belirtilmemiş'}</p>
+          <p><strong>Adres:</strong> ${cari.adres || 'Belirtilmemiş'}</p>
+          <p><strong>Evrak Sayısı:</strong> ${cari.evrak_sayisi}</p>
+          <p><strong>Kayıt Tarihi:</strong> ${formatDateTime(cari.created_at)}</p>
+          <hr>
+          <p>Bu email ÇekSenet Web uygulamasından otomatik gönderilmiştir.</p>
+        </div>
+      `
+
+      const success = await emailService.sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text: `Cari Bilgileri - Ad Soyad: ${cari.ad_soyad}, Telefon: ${cari.telefon || 'Belirtilmemiş'}, Email: ${cari.email || 'Belirtilmemiş'}`
+      })
+
+      if (success) {
+        setEmailSuccess('Email başarıyla gönderildi.')
+      } else {
+        throw new Error('Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
+      }
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Email gönderilirken bir hata oluştu.')
+    } finally {
+      setIsEmailSending(false)
+    }
+  }
+
+  // ============================================
   // Render - Loading
   // ============================================
 
@@ -332,6 +456,30 @@ export default function CariDetayPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            color="green"
+            onClick={handleSendWhatsAppMessage}
+            disabled={isWhatsAppSending}
+          >
+            {isWhatsAppSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+            )}
+            WhatsApp
+          </Button>
+          <Button
+            color="blue"
+            onClick={handleSendEmailMessage}
+            disabled={isEmailSending}
+          >
+            {isEmailSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <EnvelopeIcon className="h-5 w-5" />
+            )}
+            Email
+          </Button>
           <Button outline onClick={() => router.push(`/cariler/${cariId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />
             Düzenle

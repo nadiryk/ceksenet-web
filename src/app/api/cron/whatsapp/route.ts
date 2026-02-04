@@ -13,31 +13,52 @@ import { requireAuth, isAuthError } from '@/lib/api/auth'
 /**
  * GET /api/cron/whatsapp
  * Bekleyen WhatsApp mesajlarını işle ve ödeme hatırlatmalarını gönder
- * 
+ *
  * Query params:
  * - process_pending: true/false (varsayılan: true)
  * - send_reminders: true/false (varsayılan: true)
  * - limit: sayı (varsayılan: 10)
- * 
+ *
  * Not: Bu endpoint cron job tarafından çağrılmalıdır.
- * Manuel olarak da tetiklenebilir (sadece admin).
+ * CRON_SECRET ile korunabilir.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Cron için auth gerekli değil, ama API key veya secret ile korunabilir
-    // Şimdilik sadece admin erişimi sağlayalım
-    const user = await requireAuth()
+    // CRON_SECRET ile yetkilendirme
+    const cronSecret = process.env.CRON_SECRET
+    const authHeader = request.headers.get('Authorization')
     
-    // Sadece adminler bu endpoint'i kullanabilir
-    const supabase = await createClient()
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    
-    if (!profile || profile.role !== 'admin') {
-      return forbiddenResponse('Bu işlem için admin yetkisi gereklidir')
+    if (cronSecret && authHeader) {
+      // Bearer token kontrolü
+      const token = authHeader.replace('Bearer ', '')
+      if (token === cronSecret) {
+        // Geçerli secret, auth bypass
+        console.log('Cron secret ile yetkilendirme başarılı')
+      } else {
+        return forbiddenResponse('Geçersiz cron secret')
+      }
+    } else {
+      // Eski auth yöntemi (admin kontrolü)
+      try {
+        const user = await requireAuth()
+        const supabase = await createClient()
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        
+        if (!profile || profile.role !== 'admin') {
+          return forbiddenResponse('Bu işlem için admin yetkisi gereklidir')
+        }
+      } catch (authError) {
+        // Auth hatası, cron secret yoksa erişim reddedilebilir
+        if (!cronSecret) {
+          return unauthorizedResponse('Yetkilendirme gereklidir')
+        }
+        // Cron secret varsa ama header'da yoksa yine reddet
+        return unauthorizedResponse('Yetkilendirme gereklidir')
+      }
     }
     
     const { searchParams } = new URL(request.url)
