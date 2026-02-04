@@ -11,6 +11,7 @@ import {
   parsePagination,
 } from '@/lib/api/response'
 import { getKur } from '@/lib/tcmb'
+import { whatsappService } from '@/lib/whatsapp'
 
 /**
  * GET /api/evraklar
@@ -216,6 +217,32 @@ export async function POST(request: NextRequest) {
     if (hareketError) {
       console.error('Hareket kaydı hatası:', hareketError)
       // Hareket kaydı hata verse de evrak oluşturuldu, devam et
+    }
+
+    // WhatsApp mesajı gönder (asenkron, hata olursa engelleme)
+    try {
+      const telefonlar = await whatsappService.getWhatsAppNumbers();
+      const aktif = await whatsappService.isWhatsAppActive();
+      if (aktif && telefonlar.length > 0) {
+        const mesaj = `Yeni ${body.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} eklendi:\n` +
+          `Evrak No: ${body.evrak_no}\n` +
+          `Tutar: ${body.tutar} ${paraBirimi}\n` +
+          `Vade: ${body.vade_tarihi}\n` +
+          `Durum: ${durum}\n` +
+          `Ekleyen: ${user.email || user.id}`;
+        
+        for (const telefon of telefonlar) {
+          await whatsappService.sendSingleMessage({
+            telefon,
+            mesaj,
+            evrak_id: evrak.id
+          });
+        }
+        console.log(`WhatsApp mesajı gönderildi: ${evrak.id}`);
+      }
+    } catch (error) {
+      console.error('WhatsApp mesajı gönderilirken hata:', error);
+      // WhatsApp hatası evrak ekleme işlemini engellemez
     }
     
     return successResponse(evrak, 201)

@@ -9,6 +9,7 @@ import {
   forbiddenResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { whatsappService } from '@/lib/whatsapp'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -133,6 +134,36 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       `)
       .eq('id', evrakId)
       .single()
+
+    // WhatsApp mesajı gönder (asenkron, hata olursa engelleme)
+    try {
+      const telefonlar = await whatsappService.getWhatsAppNumbers();
+      const aktif = await whatsappService.isWhatsAppActive();
+      if (aktif && telefonlar.length > 0) {
+        const evrakTipi = updatedEvrak?.evrak_tipi === 'cek' ? 'Çek' : 'Senet';
+        const cariAdi = (updatedEvrak as any)?.cari?.ad_soyad || 'Bilinmeyen Cari';
+        const mesaj = `${evrakTipi} durumu değişti:\n` +
+          `Evrak No: ${updatedEvrak?.evrak_no}\n` +
+          `Cari: ${cariAdi}\n` +
+          `Eski Durum: ${DURUM_ISIMLERI[eskiDurum]}\n` +
+          `Yeni Durum: ${DURUM_ISIMLERI[yeniDurum]}\n` +
+          `Tutar: ${updatedEvrak?.tutar} ${updatedEvrak?.para_birimi}\n` +
+          `Vade: ${updatedEvrak?.vade_tarihi}\n` +
+          `Güncelleyen: ${user.email || user.id}`;
+        
+        for (const telefon of telefonlar) {
+          await whatsappService.sendSingleMessage({
+            telefon,
+            mesaj,
+            evrak_id: evrakId
+          });
+        }
+        console.log(`WhatsApp mesajı gönderildi: ${evrakId} durum değişikliği`);
+      }
+    } catch (error) {
+      console.error('WhatsApp mesajı gönderilirken hata:', error);
+      // WhatsApp hatası durum güncelleme işlemini engellemez
+    }
     
     return successResponse({
       evrak: updatedEvrak,

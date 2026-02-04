@@ -40,10 +40,12 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/20/solid'
 import { formatCurrency, formatDate, getDurumLabel, getDurumColor, getEvrakTipiLabel } from '@/lib/utils/format'
 import EvrakFotograflar from '@/components/evrak/EvrakFotograflar'
 import { whatsappService } from '@/lib/whatsapp'
+import { EmailService } from '@/lib/email'
 
 // ============================================
 // Types
@@ -140,6 +142,11 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
   const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
   const [whatsAppSuccess, setWhatsAppSuccess] = useState<string | null>(null)
+
+  // Email gönderim state
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
 
   // Geçerli durum geçişleri
   const gecerliDurumlar = evrak ? getGecerliDurumlar(evrak.durum) : []
@@ -256,6 +263,74 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
       setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
     } finally {
       setIsWhatsAppSending(false)
+    }
+  }
+
+  // ============================================
+  // Email Gönderimi
+  // ============================================
+
+  const handleSendEmailMessage = async () => {
+    if (!evrak) return
+
+    setIsEmailSending(true)
+    setEmailError(null)
+    setEmailSuccess(null)
+
+    try {
+      // Email servisini başlat
+      const emailService = new EmailService()
+      await emailService.initialize()
+
+      // Cari email adresini al (varsa)
+      let toEmail = ''
+      if (evrak.cari?.id) {
+        // Cari detayını çekerek email al
+        const cariResponse = await fetch(`/api/cariler/${evrak.cari.id}`)
+        if (cariResponse.ok) {
+          const cariResult = await cariResponse.json()
+          toEmail = cariResult.data?.email || ''
+        }
+      }
+
+      // Eğer cari email yoksa, ayarlardaki admin email'ine gönder
+      if (!toEmail) {
+        // Ayarlardan admin email al (basitçe geçici)
+        toEmail = 'admin@example.com' // TODO: Ayarlardan al
+      }
+
+      // Email konusu ve içeriği
+      const subject = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - ${evrak.evrak_no}`
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri</h2>
+          <p><strong>Evrak No:</strong> ${evrak.evrak_no}</p>
+          <p><strong>Tutar:</strong> ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}</p>
+          <p><strong>Vade Tarihi:</strong> ${formatDate(evrak.vade_tarihi)}</p>
+          <p><strong>Keşideci:</strong> ${evrak.kesideci || 'Belirtilmemiş'}</p>
+          <p><strong>Cari:</strong> ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}</p>
+          <p><strong>Durum:</strong> ${getDurumLabel(evrak.durum)}</p>
+          <hr>
+          <p>Bu email ÇekSenet Web uygulamasından otomatik gönderilmiştir.</p>
+        </div>
+      `
+
+      const success = await emailService.sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text: `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - Evrak No: ${evrak.evrak_no}, Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}, Vade: ${formatDate(evrak.vade_tarihi)}`
+      })
+
+      if (success) {
+        setEmailSuccess('Email başarıyla gönderildi.')
+      } else {
+        throw new Error('Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
+      }
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Email gönderilirken bir hata oluştu.')
+    } finally {
+      setIsEmailSending(false)
     }
   }
 
@@ -392,12 +467,60 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
             )}
             WhatsApp
           </Button>
+          <Button
+            color="blue"
+            onClick={handleSendEmailMessage}
+            disabled={isEmailSending}
+          >
+            {isEmailSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <EnvelopeIcon className="h-5 w-5" />
+            )}
+            Email
+          </Button>
           <Button outline onClick={() => router.push(`/evraklar/${evrakId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />
             Düzenle
           </Button>
         </div>
-      </div>
+      {/* Hata/Başarı Mesajları */}
+      {(whatsAppError || whatsAppSuccess || emailError || emailSuccess) && (
+        <div className="space-y-3">
+          {whatsAppError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
+                <Text className="text-red-700">{whatsAppError}</Text>
+              </div>
+            </div>
+          )}
+          {whatsAppSuccess && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center">
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                <Text className="text-green-700">{whatsAppSuccess}</Text>
+              </div>
+            </div>
+          )}
+          {emailError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
+                <Text className="text-red-700">{emailError}</Text>
+              </div>
+            </div>
+          )}
+          {emailSuccess && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center">
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                <Text className="text-green-700">{emailSuccess}</Text>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Evrak Bilgileri */}
       <div className="rounded-lg border border-zinc-200 bg-white p-6">

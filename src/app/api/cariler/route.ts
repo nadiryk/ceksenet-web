@@ -10,6 +10,7 @@ import {
   serverErrorResponse,
   parsePagination,
 } from '@/lib/api/response'
+import { whatsappService } from '@/lib/whatsapp'
 
 /**
  * GET /api/cariler
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     
     const supabase = await createClient()
     const body = await request.json()
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         adres: body.adres?.trim() || null,
         vergi_no: body.vergi_no?.trim() || null,
         notlar: body.notlar?.trim() || null,
+        created_by: user.id
       })
       .select()
       .single()
@@ -123,12 +125,37 @@ export async function POST(request: NextRequest) {
       console.error('Cari ekleme hatası:', error)
       return serverErrorResponse('Cari eklenirken hata oluştu')
     }
+
+    // WhatsApp mesajı gönder (asenkron, hata olursa engelleme)
+    try {
+      const telefonlar = await whatsappService.getWhatsAppNumbers();
+      const aktif = await whatsappService.isWhatsAppActive();
+      if (aktif && telefonlar.length > 0) {
+        const mesaj = `Yeni cari eklendi:\n` +
+          `Ad Soyad: ${body.ad_soyad}\n` +
+          `Tip: ${body.tip === 'musteri' ? 'Müşteri' : 'Tedarikçi'}\n` +
+          `Telefon: ${body.telefon || 'Belirtilmemiş'}\n` +
+          `E-posta: ${body.email || 'Belirtilmemiş'}\n` +
+          `Ekleyen: ${user.email || user.id}`;
+        
+        for (const telefon of telefonlar) {
+          await whatsappService.sendSingleMessage({
+            telefon,
+            mesaj
+          });
+        }
+        console.log(`WhatsApp mesajı gönderildi: yeni cari ${data.id}`);
+      }
+    } catch (error) {
+      console.error('WhatsApp mesajı gönderilirken hata:', error);
+      // WhatsApp hatası cari ekleme işlemini engellemez
+    }
     
     return successResponse(data, 201)
     
   } catch (error) {
     if (isAuthError(error)) {
-      return error.status === 401 
+      return error.status === 401
         ? unauthorizedResponse(error.message)
         : forbiddenResponse(error.message)
     }

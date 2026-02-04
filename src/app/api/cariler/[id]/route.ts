@@ -10,6 +10,7 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 import { Database } from '@/types/database'
+import { whatsappService } from '@/lib/whatsapp'
 
 type CariUpdate = Database['public']['Tables']['cariler']['Update']
 
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     
     const { id } = await params
     const cariId = parseInt(id, 10)
@@ -94,14 +95,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient()
     const body = await request.json()
     
-    // Cari var mı kontrol
-    const { data: existing } = await supabase
+    // Cari var mı kontrol (eski verileri de al)
+    const { data: existingCari } = await supabase
       .from('cariler')
-      .select('id')
+      .select('*')
       .eq('id', cariId)
       .single()
     
-    if (!existing) {
+    if (!existingCari) {
       return notFoundResponse('Cari bulunamadı')
     }
     
@@ -139,12 +140,52 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       console.error('Cari güncelleme hatası:', error)
       return serverErrorResponse('Cari güncellenirken hata oluştu')
     }
+
+    // WhatsApp mesajı gönder (asenkron, hata olursa engelleme)
+    try {
+      const telefonlar = await whatsappService.getWhatsAppNumbers();
+      const aktif = await whatsappService.isWhatsAppActive();
+      if (aktif && telefonlar.length > 0) {
+        const degisiklikler = [];
+        if (body.ad_soyad !== undefined && body.ad_soyad !== existingCari.ad_soyad) {
+          degisiklikler.push(`Ad Soyad: ${existingCari.ad_soyad} → ${body.ad_soyad}`);
+        }
+        if (body.tip !== undefined && body.tip !== existingCari.tip) {
+          degisiklikler.push(`Tip: ${existingCari.tip} → ${body.tip}`);
+        }
+        if (body.telefon !== undefined && body.telefon !== existingCari.telefon) {
+          degisiklikler.push(`Telefon: ${existingCari.telefon || 'Yok'} → ${body.telefon || 'Yok'}`);
+        }
+        if (body.email !== undefined && body.email !== existingCari.email) {
+          degisiklikler.push(`E-posta: ${existingCari.email || 'Yok'} → ${body.email || 'Yok'}`);
+        }
+        if (degisiklikler.length === 0) {
+          degisiklikler.push('Bilgiler güncellendi (detay belirtilmedi)');
+        }
+        const mesaj = `Cari bilgisi güncellendi:\n` +
+          `Cari ID: ${cariId}\n` +
+          `Ad Soyad: ${data.ad_soyad}\n` +
+          `Değişiklikler:\n${degisiklikler.map(d => `- ${d}`).join('\n')}\n` +
+          `Güncelleyen: ${user.email || user.id}`;
+        
+        for (const telefon of telefonlar) {
+          await whatsappService.sendSingleMessage({
+            telefon,
+            mesaj
+          });
+        }
+        console.log(`WhatsApp mesajı gönderildi: cari güncelleme ${cariId}`);
+      }
+    } catch (error) {
+      console.error('WhatsApp mesajı gönderilirken hata:', error);
+      // WhatsApp hatası cari güncelleme işlemini engellemez
+    }
     
     return successResponse(data)
     
   } catch (error) {
     if (isAuthError(error)) {
-      return error.status === 401 
+      return error.status === 401
         ? unauthorizedResponse(error.message)
         : forbiddenResponse(error.message)
     }
