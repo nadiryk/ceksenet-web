@@ -39,9 +39,11 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/20/solid'
 import { formatCurrency, formatDate, getDurumLabel, getDurumColor, getEvrakTipiLabel } from '@/lib/utils/format'
 import EvrakFotograflar from '@/components/evrak/EvrakFotograflar'
+import { whatsappService } from '@/lib/whatsapp'
 
 // ============================================
 // Types
@@ -134,6 +136,11 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   const [isDurumUpdating, setIsDurumUpdating] = useState(false)
   const [durumError, setDurumError] = useState<string | null>(null)
 
+  // WhatsApp gönderim state
+  const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
+  const [whatsAppSuccess, setWhatsAppSuccess] = useState<string | null>(null)
+
   // Geçerli durum geçişleri
   const gecerliDurumlar = evrak ? getGecerliDurumlar(evrak.durum) : []
 
@@ -202,6 +209,54 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
     setDurumAciklama('')
     setDurumError(null)
     setIsDurumModalOpen(true)
+  }
+
+  // ============================================
+  // WhatsApp Gönderimi
+  // ============================================
+
+  const handleSendWhatsAppMessage = async () => {
+    if (!evrak) return
+
+    setIsWhatsAppSending(true)
+    setWhatsAppError(null)
+    setWhatsAppSuccess(null)
+
+    try {
+      // WhatsApp servisini başlat
+      await whatsappService.initialize()
+      
+      // Ayarlardan telefon numarası al
+      const numbers = await whatsappService.getWhatsAppNumbers()
+      if (numbers.length === 0) {
+        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış. Lütfen ayarlar sayfasından bir telefon numarası girin.')
+      }
+
+      // Mesaj şablonu oluştur
+      const message = `*${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri*\n` +
+        `Evrak No: ${evrak.evrak_no}\n` +
+        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
+        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
+        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
+        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}`
+
+      // İlk telefon numarasına gönder
+      const success = await whatsappService.sendSingleMessage({
+        telefon: numbers[0],
+        mesaj: message,
+        evrak_id: evrak.id
+      })
+
+      if (success) {
+        setWhatsAppSuccess('WhatsApp mesajı başarıyla gönderildi.')
+      } else {
+        throw new Error('WhatsApp mesajı gönderilemedi. Lütfen ayarları kontrol edin.')
+      }
+    } catch (err) {
+      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
+    } finally {
+      setIsWhatsAppSending(false)
+    }
   }
 
   const handleCloseDurumModal = () => {
@@ -325,6 +380,18 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
               Durum Değiştir
             </Button>
           )}
+          <Button
+            color="green"
+            onClick={handleSendWhatsAppMessage}
+            disabled={isWhatsAppSending}
+          >
+            {isWhatsAppSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+            )}
+            WhatsApp
+          </Button>
           <Button outline onClick={() => router.push(`/evraklar/${evrakId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />
             Düzenle

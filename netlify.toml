@@ -25,6 +25,11 @@
 [functions."whatsapp-cron"]
   schedule = "0 9 * * *"
 
+# Scheduled Function - Günlük E-posta Raporu
+# WhatsApp cron ile aynı saatte çalışır (09:00)
+[functions."daily-email-cron"]
+  schedule = "0 9 * * *"
+
 # Headers - Guvenlik
 [[headers]]
   for = "/*"

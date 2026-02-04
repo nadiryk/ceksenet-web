@@ -121,39 +121,60 @@ export class WhatsAppService {
 
   /**
    * Gerçek WhatsApp mesaj gönderim fonksiyonu
-   * Bu fonksiyonu ihtiyacınıza göre özelleştirin
+   * CallMeBot API kullanarak gerçek mesaj gönderir
+   * Eğer API anahtarı yoksa simülasyon modunda çalışır
    */
   private async sendMessage(log: WhatsAppLog): Promise<boolean> {
-    // TODO: Gerçek WhatsApp gönderim entegrasyonu buraya eklenmeli
-    // Örnek entegrasyonlar:
-    // 1. WhatsApp Web API (whatsapp-web.js)
-    // 2. Twilio WhatsApp API
-    // 3. CallMeBot gibi ücretsiz servisler
-    // 4. Özel bir WhatsApp Business API
-
     console.log(`WhatsApp gönderiliyor: ${log.telefon} - ${log.mesaj.substring(0, 50)}...`);
 
-    // Şimdilik simülasyon: %90 başarı oranı
-    const simulatedSuccess = Math.random() > 0.1;
+    // Çevresel değişkenlerden API anahtarını al
+    const apiKey = process.env.WHATSAPP_API_KEY;
+    const useRealApi = process.env.WHATSAPP_USE_REAL_API === 'true';
 
-    if (!simulatedSuccess) {
-      console.warn('Simüle edilmiş gönderim hatası');
-      return false;
+    // Eğer gerçek API kullanımı aktif değilse veya API anahtarı yoksa simülasyon modunda çalış
+    if (!useRealApi || !apiKey) {
+      console.warn('WhatsApp API anahtarı bulunamadı veya gerçek API devre dışı. Simülasyon modunda çalışılıyor.');
+      
+      // Simülasyon: %90 başarı oranı
+      const simulatedSuccess = Math.random() > 0.1;
+      if (!simulatedSuccess) {
+        console.warn('Simüle edilmiş gönderim hatası');
+        return false;
+      }
+      return true;
     }
 
-    // Gerçek gönderim yapılacaksa aşağıdaki kodu açın ve düzenleyin:
-    /*
+    // Gerçek CallMeBot API çağrısı
     try {
-      // Örnek: CallMeBot API
-      const response = await fetch(`https://api.callmebot.com/whatsapp.php?phone=${log.telefon}&text=${encodeURIComponent(log.mesaj)}&apikey=YOUR_API_KEY`);
-      return response.ok;
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${log.telefon}&text=${encodeURIComponent(log.mesaj)}&apikey=${apiKey}`;
+      console.log(`CallMeBot API çağrısı: ${url.substring(0, 100)}...`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'CekSenetWeb/1.0'
+        }
+      });
+
+      const responseText = await response.text();
+      console.log(`CallMeBot API yanıtı: ${response.status} - ${responseText.substring(0, 100)}`);
+
+      // CallMeBot başarılı yanıtları
+      const success = response.ok && (
+        responseText.includes('Message sent') ||
+        responseText.includes('success') ||
+        response.status === 200
+      );
+
+      if (!success) {
+        console.error('CallMeBot API hatası:', responseText);
+      }
+
+      return success;
     } catch (error) {
       console.error('WhatsApp API hatası:', error);
       return false;
     }
-    */
-
-    return true;
   }
 
   /**
