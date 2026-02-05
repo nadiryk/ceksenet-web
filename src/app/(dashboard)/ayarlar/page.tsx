@@ -389,8 +389,10 @@ function WhatsAppSection() {
       const result = await response.json()
 
       if (response.ok && result.data) {
+        // WhatsApp telefon numaraları: önce whatsapp_telefon_1, yoksa whatsapp_telefon (geriye uyumluluk)
+        const phone = result.data.whatsapp_telefon_1 || result.data.whatsapp_telefon || ''
         setFormData({
-          telefon: result.data.whatsapp_telefon || '',
+          telefon: phone,
           mesaj: result.data.whatsapp_mesaj || DEFAULT_WHATSAPP_MESSAGE,
         })
       }
@@ -441,6 +443,7 @@ function WhatsAppSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           whatsapp_telefon: formData.telefon ? normalizePhoneNumber(formData.telefon) : '',
+          whatsapp_telefon_1: formData.telefon ? normalizePhoneNumber(formData.telefon) : '',
           whatsapp_mesaj: formData.mesaj,
         }),
       })

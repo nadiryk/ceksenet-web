@@ -84,7 +84,14 @@ export async function PUT(request: NextRequest) {
     // İzin verilen ayar key'leri (güvenlik için whitelist)
     const allowedKeys = [
       'whatsapp_telefon',
+      'whatsapp_telefon_1',
+      'whatsapp_telefon_2',
+      'whatsapp_telefon_3',
       'whatsapp_mesaj',
+      'whatsapp_odeme_hatirlatma_mesaj',
+      'whatsapp_degisiklik_mesaj',
+      'whatsapp_odeme_hatirlatma_gun',
+      'whatsapp_aktif',
       'firma_adi',
       'firma_telefon',
       'firma_adres',

@@ -276,18 +276,31 @@ export class WhatsAppService {
     const { data: settings, error } = await this.supabase
       .from('ayarlar')
       .select('key, value')
-      .in('key', ['whatsapp_telefon_1', 'whatsapp_telefon_2', 'whatsapp_telefon_3']);
+      .in('key', ['whatsapp_telefon', 'whatsapp_telefon_1', 'whatsapp_telefon_2', 'whatsapp_telefon_3']);
 
     if (error) {
       console.error('Telefon numaraları alınırken hata:', error);
       return [];
     }
 
-    const numbers = (settings as { key: string; value: string }[])
-      .map((s: { key: string; value: string }) => s.value)
-      .filter((v: string | null) => v && v.trim() !== '');
+    // Öncelik sırası: whatsapp_telefon_1, whatsapp_telefon_2, whatsapp_telefon_3, whatsapp_telefon (geriye uyumluluk)
+    const priority = ['whatsapp_telefon_1', 'whatsapp_telefon_2', 'whatsapp_telefon_3', 'whatsapp_telefon'];
+    const map = new Map<string, string>();
+    (settings as { key: string; value: string }[]).forEach((s) => {
+      if (s.value && s.value.trim() !== '') {
+        map.set(s.key, s.value.trim());
+      }
+    });
 
-    return numbers as string[];
+    const numbers: string[] = [];
+    for (const key of priority) {
+      if (map.has(key)) {
+        numbers.push(map.get(key)!);
+      }
+    }
+
+    // Eğer hiç numara yoksa, boş string olanları da ekleme
+    return numbers;
   }
 
   /**
