@@ -421,8 +421,7 @@ export default function KrediDetayPage() {
       // İlk telefon numarasına gönder
       const success = await whatsappService.sendSingleMessage({
         telefon: numbers[0],
-        mesaj: message,
-        kredi_id: kredi.id
+        mesaj: message
       })
 
       if (success) {
@@ -537,13 +536,14 @@ export default function KrediDetayPage() {
             color="green"
             onClick={handleSendWhatsAppMessage}
             disabled={isWhatsAppSending}
+            className="shadow-md hover:shadow-lg transition-shadow"
           >
             {isWhatsAppSending ? (
-              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
             ) : (
-              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+              <ChatBubbleLeftRightIcon className="h-6 w-6" />
             )}
-            WhatsApp
+            WhatsApp ile Paylaş
           </Button>
           <Button outline onClick={() => router.push(`/krediler/${krediId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />

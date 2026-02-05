@@ -460,13 +460,14 @@ export default function CariDetayPage() {
             color="green"
             onClick={handleSendWhatsAppMessage}
             disabled={isWhatsAppSending}
+            className="shadow-md hover:shadow-lg transition-shadow"
           >
             {isWhatsAppSending ? (
-              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
             ) : (
-              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+              <ChatBubbleLeftRightIcon className="h-6 w-6" />
             )}
-            WhatsApp
+            WhatsApp ile Paylaş
           </Button>
           <Button
             color="blue"
