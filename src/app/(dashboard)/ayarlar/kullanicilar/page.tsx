@@ -55,6 +55,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 interface Profile {
   id: string
   username: string
+  email: string
   ad_soyad: string
   role: 'admin' | 'normal'
   created_at: string
@@ -501,6 +502,7 @@ export default function KullanicilarPage() {
           <TableHead>
             <TableRow>
               <TableHeader>Kullanıcı Adı</TableHeader>
+              <TableHeader>E-posta</TableHeader>
               <TableHeader>Ad Soyad</TableHeader>
               <TableHeader>Rol</TableHeader>
               <TableHeader>Kayıt Tarihi</TableHeader>
@@ -510,7 +512,7 @@ export default function KullanicilarPage() {
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center">
+                <TableCell colSpan={6} className="py-8 text-center">
                   <Text className="text-zinc-500">Henüz kullanıcı bulunmuyor.</Text>
                 </TableCell>
               </TableRow>
@@ -525,6 +527,7 @@ export default function KullanicilarPage() {
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell>{user.email || '-'}</TableCell>
                   <TableCell>{user.ad_soyad}</TableCell>
                   <TableCell>
                     <Badge color={ROLE_COLORS[user.role]}>

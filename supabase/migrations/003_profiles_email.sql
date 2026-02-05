@@ -7,10 +7,10 @@
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
 
 -- 2. Mevcut kayıtlara auth.users'dan email doldur
-UPDATE profiles p
-SET email = u.email
-FROM auth.users u
-WHERE p.id = u.id AND p.email IS NULL;
+UPDATE profiles 
+SET email = auth.users.email
+FROM auth.users 
+WHERE profiles.id = auth.users.id AND profiles.email IS NULL;
 
 -- 3. Trigger fonksiyonunu güncelle (yeni kullanıcılar için email otomatik ekle)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
