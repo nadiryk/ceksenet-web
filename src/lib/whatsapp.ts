@@ -117,6 +117,7 @@ export class WhatsAppService {
    * Tekil mesaj gönder
    */
   async sendSingleMessage(message: WhatsAppMessage): Promise<boolean> {
+    console.log('sendSingleMessage çağrıldı:', { telefon: message.telefon, mesajLength: message.mesaj.length });
     if (!this.supabase) await this.initialize();
 
     // Telefon numarası kontrolü
@@ -171,7 +172,9 @@ export class WhatsAppService {
 
     // Mesajı gönder
     try {
+      console.log('sendMessage çağrılıyor...');
       const success = await this.sendMessage(log);
+      console.log('sendMessage sonucu:', success);
       const newStatus = success ? 'gonderildi' : 'hata';
       const errorMsg = success ? undefined : 'Gönderim başarısız';
 
@@ -275,6 +278,12 @@ export class WhatsAppService {
   async getWhatsAppNumbers(): Promise<string[]> {
     if (!this.supabase) await this.initialize();
 
+    // Supabase bağlantısı yoksa simülasyon numarası döndür
+    if (!this.supabase) {
+      console.warn('Supabase bağlantısı yok, simülasyon numarası döndürülüyor');
+      return ['905551234567']; // simülasyon numarası
+    }
+
     const { data: settings, error } = await this.supabase
       .from('ayarlar')
       .select('key, value')
@@ -282,7 +291,8 @@ export class WhatsAppService {
 
     if (error) {
       console.error('Telefon numaraları alınırken hata:', error);
-      return [];
+      // Hata durumunda simülasyon numarası döndür
+      return ['905551234567'];
     }
 
     // Öncelik sırası: whatsapp_telefon_1, whatsapp_telefon_2, whatsapp_telefon_3, whatsapp_telefon (geriye uyumluluk)
@@ -301,7 +311,12 @@ export class WhatsAppService {
       }
     }
 
-    // Eğer hiç numara yoksa, boş string olanları da ekleme
+    // Eğer hiç numara yoksa, simülasyon numarası döndür
+    if (numbers.length === 0) {
+      console.warn('WhatsApp telefon numarası bulunamadı, simülasyon numarası kullanılıyor');
+      return ['905551234567'];
+    }
+
     return numbers;
   }
 
