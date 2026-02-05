@@ -119,6 +119,12 @@ export class WhatsAppService {
   async sendSingleMessage(message: WhatsAppMessage): Promise<boolean> {
     if (!this.supabase) await this.initialize();
 
+    // Telefon numarası kontrolü
+    if (!message.telefon || message.telefon.trim() === '') {
+      console.error('WhatsApp gönderimi için telefon numarası belirtilmedi');
+      return false;
+    }
+
     // Supabase bağlantısı yoksa simülasyon modunda doğrudan gönder
     if (!this.supabase) {
       console.warn('Supabase bağlantısı yok, simülasyon modunda mesaj gönderiliyor');
@@ -194,12 +200,8 @@ export class WhatsAppService {
     if (!useRealApi || !apiKey) {
       console.warn('WhatsApp API anahtarı bulunamadı veya gerçek API devre dışı. Simülasyon modunda çalışılıyor.');
       
-      // Simülasyon: %90 başarı oranı
-      const simulatedSuccess = Math.random() > 0.1;
-      if (!simulatedSuccess) {
-        console.warn('Simüle edilmiş gönderim hatası');
-        return false;
-      }
+      // Simülasyon: her zaman başarılı (geliştirme ortamı)
+      console.log('Simülasyon modunda WhatsApp mesajı gönderildi (her zaman başarılı)');
       return true;
     }
 
