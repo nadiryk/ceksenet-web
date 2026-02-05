@@ -484,6 +484,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
             Düzenle
           </Button>
         </div>
+      </div>
       {/* Hata/Başarı Mesajları */}
       {(whatsAppError || whatsAppSuccess || emailError || emailSuccess) && (
         <div className="space-y-3">
