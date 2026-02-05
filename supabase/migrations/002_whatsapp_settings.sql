@@ -40,6 +40,7 @@ CREATE TABLE whatsapp_loglari (
     hata_mesaji TEXT,
     evrak_id INTEGER REFERENCES evraklar(id) ON DELETE SET NULL,
     kredi_taksit_id INTEGER REFERENCES kredi_taksitler(id) ON DELETE SET NULL,
+    cari_id INTEGER REFERENCES cariler(id) ON DELETE SET NULL,
     gonderim_tarihi TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

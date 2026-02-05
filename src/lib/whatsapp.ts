@@ -5,6 +5,7 @@ export interface WhatsAppMessage {
   mesaj: string;
   evrak_id?: number;
   kredi_taksit_id?: number;
+  cari_id?: number;
 }
 
 export interface WhatsAppLog {
@@ -15,6 +16,7 @@ export interface WhatsAppLog {
   hata_mesaji?: string;
   evrak_id?: number;
   kredi_taksit_id?: number;
+  cari_id?: number;
   gonderim_tarihi?: string;
   created_at: string;
 }
@@ -127,6 +129,7 @@ export class WhatsAppService {
         durum: 'bekliyor',
         evrak_id: message.evrak_id || undefined,
         kredi_taksit_id: message.kredi_taksit_id || undefined,
+        cari_id: message.cari_id || undefined,
         gonderim_tarihi: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
@@ -148,6 +151,7 @@ export class WhatsAppService {
         mesaj: message.mesaj,
         evrak_id: message.evrak_id || null,
         kredi_taksit_id: message.kredi_taksit_id || null,
+        cari_id: message.cari_id || null,
         durum: 'bekliyor',
         gonderim_tarihi: new Date().toISOString()
       })
