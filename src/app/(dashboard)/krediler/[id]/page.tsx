@@ -39,6 +39,7 @@ import {
   BanknotesIcon,
   CalendarDaysIcon,
   CurrencyDollarIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/20/solid'
 import {
   formatCurrency,
@@ -49,6 +50,7 @@ import {
   getTaksitDurumColor,
 } from '@/lib/utils/format'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { whatsappService } from '@/lib/whatsapp'
 
 // ============================================
 // Types
@@ -208,6 +210,11 @@ export default function KrediDetayPage() {
   // Silme dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // WhatsApp gönderim state
+  const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
+  const [whatsAppSuccess, setWhatsAppSuccess] = useState<string | null>(null)
 
   // ============================================
   // Data Fetching
@@ -381,6 +388,56 @@ export default function KrediDetayPage() {
   }
 
   // ============================================
+  // WhatsApp Gönderimi
+  // ============================================
+
+  const handleSendWhatsAppMessage = async () => {
+    if (!kredi) return
+
+    setIsWhatsAppSending(true)
+    setWhatsAppError(null)
+    setWhatsAppSuccess(null)
+
+    try {
+      // WhatsApp servisini başlat
+      await whatsappService.initialize()
+
+      // Ayarlardan telefon numarası al
+      const numbers = await whatsappService.getWhatsAppNumbers()
+      if (numbers.length === 0) {
+        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış. Lütfen ayarlar sayfasından bir telefon numarası girin.')
+      }
+
+      // Mesaj şablonu oluştur
+      const message = `*Kredi Bilgileri*\n` +
+        `Banka: ${kredi.banka?.ad || 'Belirtilmemiş'}\n` +
+        `Kredi Türü: ${KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu}\n` +
+        `Anapara: ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n` +
+        `Toplam Ödeme: ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}\n` +
+        `Kalan Borç: ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}\n` +
+        `Geciken Taksit: ${kredi.ozet.geciken_taksit} adet\n` +
+        `Durum: ${getKrediDurumLabel(kredi.durum)}`
+
+      // İlk telefon numarasına gönder
+      const success = await whatsappService.sendSingleMessage({
+        telefon: numbers[0],
+        mesaj: message,
+        kredi_id: kredi.id
+      })
+
+      if (success) {
+        setWhatsAppSuccess('WhatsApp mesajı başarıyla gönderildi.')
+      } else {
+        throw new Error('WhatsApp mesajı gönderilemedi. Lütfen ayarları kontrol edin.')
+      }
+    } catch (err) {
+      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
+    } finally {
+      setIsWhatsAppSending(false)
+    }
+  }
+
+  // ============================================
   // Helpers
   // ============================================
 
@@ -476,6 +533,18 @@ export default function KrediDetayPage() {
               Erken Ödeme
             </Button>
           )}
+          <Button
+            color="green"
+            onClick={handleSendWhatsAppMessage}
+            disabled={isWhatsAppSending}
+          >
+            {isWhatsAppSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+            )}
+            WhatsApp
+          </Button>
           <Button outline onClick={() => router.push(`/krediler/${krediId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />
             Düzenle
