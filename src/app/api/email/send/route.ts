@@ -80,17 +80,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Nodemailer transporter oluştur
+    // Nodemailer transporter oluştur
+    const isSecure = settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true');
+    const secureState = smtpPort === 465 ? true : (smtpPort === 587 ? false : isSecure);
+
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465 || smtpSecure, // 465 ise true, değilse ayara bak
+      secure: secureState, // 465 için true, 587 için false, diğerleri için ayara bak
       auth: {
         user: smtpUser,
         pass: smtpPassword,
       },
-      // Geliştirme ortamında veya açıkça istenirse TLS sertifikasını doğrulama
       tls: {
-        rejectUnauthorized: process.env.NODE_ENV === 'production' && !settings.smtp_secure
+        // SSL hatalarını önlemek için
+        rejectUnauthorized: process.env.NODE_ENV === 'production' && !settings.smtp_secure,
+        ciphers: 'SSLv3', // Bazı sunucular için gerekebilir
+        minVersion: 'TLSv1.2'
       }
     });
 
