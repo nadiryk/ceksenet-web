@@ -36,7 +36,7 @@ export class EmailService {
   /**
    * E-posta gönder
    */
-  async sendEmail(options: EmailOptions): Promise<boolean> {
+  async sendEmail(options: EmailOptions): Promise<EmailResult> {
     try {
       // Çevresel değişkenlerden e-posta yapılandırmasını al
       const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
@@ -48,21 +48,22 @@ export class EmailService {
         default:
           return await this.sendWithSMTP(options);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('E-posta gönderim hatası:', error);
-      return false;
+      return { success: false, message: error.message || 'E-posta gönderim hatası' };
     }
   }
 
   /**
    * SendGrid ile e-posta gönder
    */
-  private async sendWithSendGrid(options: EmailOptions): Promise<boolean> {
+  private async sendWithSendGrid(options: EmailOptions): Promise<EmailResult> {
     const apiKey = process.env.SENDGRID_API_KEY;
 
     if (!apiKey) {
-      console.error('SendGrid API anahtarı bulunamadı. Lütfen SENDGRID_API_KEY çevresel değişkenini ayarlayın.');
-      return false;
+      const msg = 'SendGrid API anahtarı bulunamadı. Lütfen SENDGRID_API_KEY çevresel değişkenini ayarlayın.';
+      console.error(msg);
+      return { success: false, message: msg };
     }
 
     try {
@@ -100,19 +101,20 @@ export class EmailService {
       if (!success) {
         const errorText = await response.text();
         console.error('SendGrid hatası:', errorText);
+        return { success: false, message: `SendGrid hatası: ${errorText}` };
       }
 
-      return success;
-    } catch (error) {
+      return { success: true, message: 'E-posta başarıyla gönderildi' };
+    } catch (error: any) {
       console.error('SendGrid API hatası:', error);
-      return false;
+      return { success: false, message: `SendGrid API hatası: ${error.message}` };
     }
   }
 
   /**
    * SMTP ile e-posta gönder (Nodemailer benzeri, fetch ile)
    */
-  private async sendWithSMTP(options: EmailOptions): Promise<boolean> {
+  private async sendWithSMTP(options: EmailOptions): Promise<EmailResult> {
     // SMTP sunucusu için API endpoint kullanacağız
     // Bu fonksiyon bir backend API'sini çağırmalı
     // Alternatif olarak doğrudan SMTP bağlantısı kurulabilir ama Next.js edge'de mümkün değil
@@ -127,16 +129,30 @@ export class EmailService {
         body: JSON.stringify(options),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('SMTP API hatası:', errorText);
-        return false;
+        console.error('SMTP API hatası:', result.error);
+        return { success: false, message: result.error || 'SMTP gönderim hatası' };
       }
 
-      return true;
-    } catch (error) {
+      // API başarılı döndü ama simulation olabilir
+      if (result.data?.simulated) {
+        console.warn('Email simulated:', result.data.message);
+        // Kullanıcıya simülasyon olduğunu bildirelim ama hata olarak dönmeyelim (veya dönelim?)
+        // Kullanıcı "mail gitmiyor" diyor, o yüzden bunu bir uyarı mesajı ile success: false olarak döndürebiliriz
+        // YA DA success: true ama mesajda belirtiriz.
+        // Kullanıcı deneyimi için: Eğer SMTP ayarları eksik olduğu için simule edildiyse, bu bir HATA olabilir.
+        return {
+          success: false,
+          message: `Simülasyon Modu: ${result.data.message}. Lütfen Ayarlar > E-posta Ayarları kısmından SMTP bilgilerinizi giriniz.`
+        };
+      }
+
+      return { success: true, message: 'E-posta başarıyla gönderildi' };
+    } catch (error: any) {
       console.error('SMTP gönderim hatası:', error);
-      return false;
+      return { success: false, message: `SMTP gönderim hatası: ${error.message}` };
     }
   }
 

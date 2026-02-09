@@ -131,17 +131,33 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPassword = process.env.SMTP_PASSWORD;
+    // Supabase'den ayarları çek
+    const supabase = await createClient();
+    const { data: settingsData } = await supabase
+      .from('ayarlar')
+      .select('key, value')
+      .in('key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_secure', 'email_from', 'email_from_name']);
+
+    // Ayarları objeye çevir
+    const settings: Record<string, string> = {};
+    settingsData?.forEach(row => {
+      if (row.value) settings[row.key] = row.value;
+    });
+
+    const smtpHost = settings.smtp_host || process.env.SMTP_HOST;
+    const smtpUser = settings.smtp_user || process.env.SMTP_USER;
+    const smtpPassword = settings.smtp_password || process.env.SMTP_PASSWORD;
 
     const config = {
+      source: settings.smtp_host ? 'database' : 'environment',
       hasSmtpConfig: !!(smtpHost && smtpUser && smtpPassword),
-      smtpHost: smtpHost ? `${smtpHost.substring(0, 10)}...` : 'YOK',
-      smtpUser: smtpUser ? `${smtpUser.substring(0, 5)}...` : 'YOK',
+      smtpHost: smtpHost ? `${smtpHost}` : 'YOK', // Güvenlik için tamamını göstermeyebiliriz ama debug için lazım olabilir
+      smtpUser: smtpUser,
       smtpPassword: smtpPassword ? '***' : 'YOK',
-      emailFrom: process.env.EMAIL_FROM || 'YOK',
-      emailFromName: process.env.EMAIL_FROM_NAME || 'YOK',
+      smtpPort: settings.smtp_port || process.env.SMTP_PORT || '587',
+      smtpSecure: settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true'),
+      emailFrom: settings.email_from || process.env.EMAIL_FROM || 'YOK',
+      emailFromName: settings.email_from_name || process.env.EMAIL_FROM_NAME || 'YOK',
       emailProvider: process.env.EMAIL_PROVIDER || 'smtp',
       nodeEnv: process.env.NODE_ENV,
       timestamp: new Date().toISOString(),

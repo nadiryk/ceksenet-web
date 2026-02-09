@@ -330,17 +330,17 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         </div>
       `
 
-      const success = await emailService.sendEmail({
+      const result = await emailService.sendEmail({
         to: toEmail,
         subject,
         html,
         text: `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - Evrak No: ${evrak.evrak_no}, Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}, Vade: ${formatDate(evrak.vade_tarihi)}`
       })
 
-      if (success) {
-        setEmailSuccess('Email başarıyla gönderildi.')
+      if (result.success) {
+        setEmailSuccess(result.message || 'Email başarıyla gönderildi.')
       } else {
-        throw new Error('Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
+        throw new Error(result.message || 'Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
       }
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Email gönderilirken bir hata oluştu.')
