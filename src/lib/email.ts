@@ -212,12 +212,12 @@ export class EmailService {
   /**
    * Günlük rapor e-postası gönder
    */
-  async sendDailyReport(reportData: any): Promise<boolean> {
+  async sendDailyReport(reportData: any): Promise<EmailResult> {
     const adminEmails = await this.getAdminEmails();
 
     if (adminEmails.length === 0) {
       console.warn('Günlük rapor gönderilemedi: Admin e-posta adresi bulunamadı.');
-      return false;
+      return { success: false, message: 'Admin e-posta adresi bulunamadı' };
     }
 
     const today = new Date();
