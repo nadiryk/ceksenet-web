@@ -97,6 +97,13 @@ export async function PUT(request: NextRequest) {
       'firma_adres',
       'email_admin',
       'email_bildirim_aktif',
+      'smtp_host',
+      'smtp_port',
+      'smtp_user',
+      'smtp_password',
+      'smtp_secure',
+      'email_from',
+      'email_from_name',
     ]
 
     // Sadece izin verilen key'leri filtrele

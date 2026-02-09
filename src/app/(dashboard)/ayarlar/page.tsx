@@ -634,12 +634,26 @@ function WhatsAppSection() {
 interface EmailFormData {
   email_admin: string
   email_bildirim_aktif: boolean
+  smtp_host: string
+  smtp_port: string
+  smtp_user: string
+  smtp_password?: string // İsteğe bağlı, boş ise değiştirilmez
+  smtp_secure: boolean
+  email_from: string
+  email_from_name: string
 }
 
 function EmailSection() {
   const [formData, setFormData] = useState<EmailFormData>({
     email_admin: '',
     email_bildirim_aktif: true,
+    smtp_host: '',
+    smtp_port: '587',
+    smtp_user: '',
+    smtp_password: '',
+    smtp_secure: false,
+    email_from: '',
+    email_from_name: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -660,7 +674,14 @@ function EmailSection() {
       if (response.ok && result.data) {
         setFormData({
           email_admin: result.data.email_admin || '',
-          email_bildirim_aktif: result.data.email_bildirim_aktif === 'true', // value string olarak geliyor
+          email_bildirim_aktif: result.data.email_bildirim_aktif === 'true',
+          smtp_host: result.data.smtp_host || '',
+          smtp_port: result.data.smtp_port || '587',
+          smtp_user: result.data.smtp_user || '',
+          smtp_password: '', // Güvenlik nedeniyle şifreyi geri döndürmüyoruz
+          smtp_secure: result.data.smtp_secure === 'true',
+          email_from: result.data.email_from || '',
+          email_from_name: result.data.email_from_name || '',
         })
       }
     } catch (err) {
@@ -673,7 +694,7 @@ function EmailSection() {
   const handleSave = async () => {
     // Validate email if provided
     if (formData.email_admin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_admin)) {
-      setError('Geçersiz e-posta adresi.')
+      setError('Geçersiz yönetici e-posta adresi.')
       return
     }
 
@@ -682,13 +703,26 @@ function EmailSection() {
       setError(null)
       setSuccess(false)
 
+      const payload: any = {
+        email_admin: formData.email_admin,
+        email_bildirim_aktif: String(formData.email_bildirim_aktif),
+        smtp_host: formData.smtp_host,
+        smtp_port: formData.smtp_port,
+        smtp_user: formData.smtp_user,
+        smtp_secure: String(formData.smtp_secure),
+        email_from: formData.email_from,
+        email_from_name: formData.email_from_name,
+      }
+
+      // Şifre sadece doluysa gönderilir
+      if (formData.smtp_password) {
+        payload.smtp_password = formData.smtp_password
+      }
+
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email_admin: formData.email_admin,
-          email_bildirim_aktif: String(formData.email_bildirim_aktif), // string olarak kaydediyoruz
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -698,6 +732,9 @@ function EmailSection() {
 
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+
+      // Şifre alanını temizle
+      setFormData(prev => ({ ...prev, smtp_password: '' }))
     } catch (err: any) {
       console.error('Ayarlar kaydedilemedi:', err)
       setError(err.message || 'Ayarlar kaydedilirken bir hata oluştu.')
@@ -715,20 +752,22 @@ function EmailSection() {
         </div>
         <div className="animate-pulse space-y-4 max-w-2xl">
           <div className="h-10 bg-zinc-100 rounded-lg" />
+          <div className="h-10 bg-zinc-100 rounded-lg" />
+          <div className="h-10 bg-zinc-100 rounded-lg" />
         </div>
       </section>
     )
   }
 
   return (
-    <section>
+    <section className="mb-20">
       {/* Section Header */}
       <div className="flex items-center gap-3 mb-2">
         <EnvelopeIcon className="h-6 w-6 text-blue-600" />
         <Subheading>E-posta Ayarları</Subheading>
       </div>
       <Text className="mb-6">
-        Sistem bildirimlerinin gönderileceği e-posta ayarlarını yapılandırın.
+        Sistem bildirimleri ve SMTP sunucu ayarlarını yapılandırın.
       </Text>
 
       {/* Alerts */}
@@ -753,44 +792,138 @@ function EmailSection() {
       )}
 
       {/* Form */}
-      <div className="max-w-2xl space-y-6">
-        <FieldGroup>
-          {/* Admin Email */}
-          <Field>
-            <Label>Yönetici E-posta Adresi</Label>
-            <Description>
-              Sistem bildirimlerinin (ör. yeni evrak, durum değişikliği) gönderileceği e-posta adresi.
-            </Description>
-            <Input
-              type="email"
-              placeholder="admin@sirketadi.com"
-              value={formData.email_admin}
-              onChange={(e) => setFormData((prev) => ({ ...prev, email_admin: e.target.value }))}
-            />
-          </Field>
-
-          {/* Bildirim Aktif */}
-          <div className="flex items-start gap-3">
-            <div className="flex h-6 items-center">
-              <input
-                id="email_bildirim_aktif"
-                name="email_bildirim_aktif"
-                type="checkbox"
-                checked={formData.email_bildirim_aktif}
-                onChange={(e) => setFormData((prev) => ({ ...prev, email_bildirim_aktif: e.target.checked }))}
-                className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-600"
+      <div className="max-w-2xl space-y-8">
+        {/* Bildirim Ayarları */}
+        <div>
+          <Heading level={3} className="text-base font-semibold mb-4">Genel Ayarlar</Heading>
+          <FieldGroup>
+            <Field>
+              <Label>Yönetici E-posta Adresi</Label>
+              <Description>
+                Sistem bildirimlerinin gideceği e-posta adresi.
+              </Description>
+              <Input
+                type="email"
+                placeholder="admin@sirketadi.com"
+                value={formData.email_admin}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email_admin: e.target.value }))}
               />
+            </Field>
+
+            <div className="flex items-start gap-3">
+              <div className="flex h-6 items-center">
+                <input
+                  id="email_bildirim_aktif"
+                  name="email_bildirim_aktif"
+                  type="checkbox"
+                  checked={formData.email_bildirim_aktif}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email_bildirim_aktif: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-600"
+                />
+              </div>
+              <div className="text-sm leading-6">
+                <label htmlFor="email_bildirim_aktif" className="font-medium text-zinc-900">
+                  E-posta Bildirimlerini Aç
+                </label>
+                <p className="text-zinc-500">
+                  Aktif edildiğinde sistem otomatik e-postalar gönderir.
+                </p>
+              </div>
             </div>
-            <div className="text-sm leading-6">
-              <label htmlFor="email_bildirim_aktif" className="font-medium text-zinc-900">
-                E-posta Bildirimlerini Aç
-              </label>
-              <p className="text-zinc-500">
-                İşaretlendiğinde, önemli olaylarda (vade hatırlatma, vb.) e-posta gönderilir.
-              </p>
+          </FieldGroup>
+        </div>
+
+        <Divider />
+
+        {/* SMTP Ayarları */}
+        <div>
+          <Heading level={3} className="text-base font-semibold mb-4">SMTP Sunucu Ayarları</Heading>
+          <Text className="text-sm text-zinc-500 mb-4">
+            E-posta gönderimi için kullanılacak SMTP sunucu bilgileri. Eğer boş bırakırsanız sistem varsayılanlarını (environment variables) kullanmaya çalışır.
+          </Text>
+
+          <FieldGroup>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field>
+                <Label>SMTP Sunucusu</Label>
+                <Input
+                  placeholder="smtp.gmail.com"
+                  value={formData.smtp_host}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, smtp_host: e.target.value }))}
+                />
+              </Field>
+              <Field>
+                <Label>Port</Label>
+                <Input
+                  placeholder="587"
+                  value={formData.smtp_port}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, smtp_port: e.target.value }))}
+                />
+              </Field>
             </div>
-          </div>
-        </FieldGroup>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field>
+                <Label>Kullanıcı Adı (E-posta)</Label>
+                <Input
+                  placeholder="ornek@gmail.com"
+                  value={formData.smtp_user}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, smtp_user: e.target.value }))}
+                />
+              </Field>
+              <Field>
+                <Label>Şifre</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.smtp_password}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, smtp_password: e.target.value }))}
+                />
+                <Description>Sadece değiştirmek istiyorsanız doldurun.</Description>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field>
+                <Label>Gönderen Adı</Label>
+                <Input
+                  placeholder="ÇekSenet Web"
+                  value={formData.email_from_name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email_from_name: e.target.value }))}
+                />
+              </Field>
+              <Field>
+                <Label>Gönderen E-posta</Label>
+                <Input
+                  placeholder="noreply@sirketadi.com"
+                  value={formData.email_from}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email_from: e.target.value }))}
+                />
+              </Field>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="flex h-6 items-center">
+                <input
+                  id="smtp_secure"
+                  name="smtp_secure"
+                  type="checkbox"
+                  checked={formData.smtp_secure}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, smtp_secure: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-600"
+                />
+              </div>
+              <div className="text-sm leading-6">
+                <label htmlFor="smtp_secure" className="font-medium text-zinc-900">
+                  SSL Kullan (Secure)
+                </label>
+                <p className="text-zinc-500">
+                  Genellikle 465 portu için gereklidir. 587 için kapalı tutun (TLS otomatik kullanılır).
+                </p>
+              </div>
+            </div>
+          </FieldGroup>
+        </div>
 
         <Divider />
 

@@ -16,6 +16,19 @@ import {
  * - html: string
  * - text?: string
  */
+// ... other imports
+import { createClient } from '@/lib/supabase/server';
+
+/**
+ * POST /api/email/send
+ * SMTP ile e-posta gönder
+ * 
+ * Body:
+ * - to: string | string[]
+ * - subject: string
+ * - html: string
+ * - text?: string
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -25,13 +38,28 @@ export async function POST(request: NextRequest) {
       return errorResponse('to, subject ve html alanları zorunludur');
     }
 
-    // SMTP yapılandırması
-    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPassword = process.env.SMTP_PASSWORD;
-    const smtpFrom = process.env.EMAIL_FROM || 'noreply@ceksenet.com';
-    const smtpFromName = process.env.EMAIL_FROM_NAME || 'ÇekSenet Web';
+    // Supabase'den ayarları çek
+    const supabase = await createClient();
+    const { data: settingsData } = await supabase
+      .from('ayarlar')
+      .select('key, value')
+      .in('key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_secure', 'email_from', 'email_from_name']);
+
+    // Ayarları objeye çevir
+    const settings: Record<string, string> = {};
+    settingsData?.forEach(row => {
+      if (row.value) settings[row.key] = row.value;
+    });
+
+    // SMTP yapılandırması (DB öncelikli, yoksa ENV)
+    const smtpHost = settings.smtp_host || process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpPort = parseInt(settings.smtp_port || process.env.SMTP_PORT || '587', 10);
+    const smtpUser = settings.smtp_user || process.env.SMTP_USER;
+    const smtpPassword = settings.smtp_password || process.env.SMTP_PASSWORD;
+    const smtpSecure = settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true');
+
+    const smtpFrom = settings.email_from || process.env.EMAIL_FROM || 'noreply@ceksenet.com';
+    const smtpFromName = settings.email_from_name || process.env.EMAIL_FROM_NAME || 'ÇekSenet Web';
 
     // Eğer SMTP bilgileri yoksa simülasyon modunda çalış
     if (!smtpUser || !smtpPassword) {
@@ -46,7 +74,7 @@ export async function POST(request: NextRequest) {
       return successResponse({
         success: true,
         simulated: true,
-        message: 'E-posta simülasyon modunda işlendi (gerçek gönderim yapılmadı)',
+        message: 'E-posta simülasyon modunda işlendi (gerçek gönderim yapılmadı - SMTP ayarları eksik)',
         timestamp: new Date().toISOString(),
       });
     }
@@ -55,17 +83,15 @@ export async function POST(request: NextRequest) {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465, // SSL için 465, TLS için 587
+      secure: smtpPort === 465 || smtpSecure, // 465 ise true, değilse ayara bak
       auth: {
         user: smtpUser,
         pass: smtpPassword,
       },
-      // Geliştirme ortamında TLS sertifikasını doğrulama
-      ...(process.env.NODE_ENV !== 'production' && {
-        tls: {
-          rejectUnauthorized: false,
-        },
-      }),
+      // Geliştirme ortamında veya açıkça istenirse TLS sertifikasını doğrulama
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production' && !settings.smtp_secure
+      }
     });
 
     // E-posta seçenekleri
@@ -92,7 +118,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('E-posta gönderim hatası:', error);
-    
+
     return serverErrorResponse(
       error.message || 'E-posta gönderimi sırasında bir hata oluştu'
     );
