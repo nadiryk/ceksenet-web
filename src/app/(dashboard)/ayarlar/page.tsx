@@ -704,14 +704,14 @@ function EmailSection() {
       setSuccess(false)
 
       const payload: any = {
-        email_admin: formData.email_admin,
+        email_admin: formData.email_admin.trim(),
         email_bildirim_aktif: String(formData.email_bildirim_aktif),
-        smtp_host: formData.smtp_host,
-        smtp_port: formData.smtp_port,
-        smtp_user: formData.smtp_user,
+        smtp_host: formData.smtp_host.trim(),
+        smtp_port: formData.smtp_port.trim(),
+        smtp_user: formData.smtp_user.trim(),
         smtp_secure: String(formData.smtp_secure),
-        email_from: formData.email_from,
-        email_from_name: formData.email_from_name,
+        email_from: formData.email_from.trim(),
+        email_from_name: formData.email_from_name.trim(),
       }
 
       // Şifre sadece doluysa gönderilir
