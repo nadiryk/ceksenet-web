@@ -18,6 +18,11 @@ export interface EmailAttachment {
   encoding?: string;
 }
 
+export interface EmailResult {
+  success: boolean;
+  message: string;
+}
+
 /**
  * E-posta gönderme servisi
  * SMTP veya SendGrid gibi servislerle entegre edilebilir
