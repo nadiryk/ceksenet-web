@@ -43,7 +43,7 @@ export class WhatsAppService {
       this.supabase = null;
       return;
     }
-    
+
     try {
       this.supabase = await createClient();
     } catch (error) {
@@ -92,7 +92,7 @@ export class WhatsAppService {
     for (const msg of pendingMessages) {
       try {
         const success = await this.sendMessage(msg);
-        
+
         if (success) {
           await this.updateMessageStatus(msg.id, 'gonderildi');
           sent++;
@@ -192,27 +192,53 @@ export class WhatsAppService {
    * CallMeBot API kullanarak gerçek mesaj gönderir
    * Eğer API anahtarı yoksa simülasyon modunda çalışır
    */
+  /**
+   * Gerçek WhatsApp mesaj gönderim fonksiyonu
+   * CallMeBot API kullanarak gerçek mesaj gönderir
+   * Eğer API anahtarı yoksa simülasyon modunda çalışır
+   */
   private async sendMessage(log: WhatsAppLog): Promise<boolean> {
     console.log(`WhatsApp gönderiliyor: ${log.telefon} - ${log.mesaj.substring(0, 50)}...`);
 
-    // Çevresel değişkenlerden API anahtarını al
-    const apiKey = process.env.WHATSAPP_API_KEY;
-    const useRealApi = process.env.WHATSAPP_USE_REAL_API === 'true';
+    // Ayarları veritabanından al
+    let apiKey = process.env.WHATSAPP_API_KEY;
+    let useRealApi = process.env.WHATSAPP_USE_REAL_API === 'true';
+
+    try {
+      if (!this.supabase) await this.initialize();
+
+      if (this.supabase) {
+        const { data: settings } = await this.supabase
+          .from('ayarlar')
+          .select('key, value')
+          .in('key', ['whatsapp_api_key', 'whatsapp_aktif']);
+
+        if (settings) {
+          const keySetting = settings.find((s: any) => s.key === 'whatsapp_api_key');
+          const activeSetting = settings.find((s: any) => s.key === 'whatsapp_aktif');
+
+          if (keySetting?.value) apiKey = keySetting.value;
+          if (activeSetting?.value) useRealApi = activeSetting.value === 'true';
+        }
+      }
+    } catch (error) {
+      console.warn('WhatsApp ayarları veritabanından alınamadı, env vars kullanılıyor');
+    }
 
     // Eğer gerçek API kullanımı aktif değilse veya API anahtarı yoksa simülasyon modunda çalış
     if (!useRealApi || !apiKey) {
-      console.warn('WhatsApp API anahtarı bulunamadı veya gerçek API devre dışı. Simülasyon modunda çalışılıyor.');
-      
+      console.warn('WhatsApp API anahtarı bulunamadı veya gönderim kapalı. Simülasyon modunda çalışılıyor.');
+      console.log(`Simülasyon Detayı: API Key: ${apiKey ? '***' : 'YOK'}, Aktif: ${useRealApi}`);
+
       // Simülasyon: her zaman başarılı (geliştirme ortamı)
-      console.log('Simülasyon modunda WhatsApp mesajı gönderildi (her zaman başarılı)');
       return true;
     }
 
-    // Gerçek CallMeBot API çağrısı
+    // CallMeBot API gönderimi (Aynı kalacak)
     try {
       const url = `https://api.callmebot.com/whatsapp.php?phone=${log.telefon}&text=${encodeURIComponent(log.mesaj)}&apikey=${apiKey}`;
-      console.log(`CallMeBot API çağrısı: ${url.substring(0, 100)}...`);
-      
+      console.log(`CallMeBot API çağrısı: ${url.replace(apiKey, '***')}`);
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -221,9 +247,9 @@ export class WhatsAppService {
       });
 
       const responseText = await response.text();
+      // ... (rest is same)
       console.log(`CallMeBot API yanıtı: ${response.status} - ${responseText.substring(0, 100)}`);
 
-      // CallMeBot başarılı yanıtları
       const success = response.ok && (
         responseText.includes('Message sent') ||
         responseText.includes('success') ||
