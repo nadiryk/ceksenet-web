@@ -25,29 +25,29 @@ import {
 export async function GET(request: NextRequest) {
   try {
     await requireAuth()
-    
+
     const supabase = await createClient()
-    
+
     const { data, error } = await supabase
       .from('ayarlar')
       .select('key, value')
-    
+
     if (error) {
       console.error('Ayarlar listesi hatası:', error)
       return serverErrorResponse('Ayarlar yüklenirken hata oluştu')
     }
-    
+
     // Key-value array'ini object'e çevir
     const settings: Record<string, string | null> = {}
     data?.forEach((row) => {
       settings[row.key] = row.value
     })
-    
+
     return successResponse(settings)
-    
+
   } catch (error) {
     if (isAuthError(error)) {
-      return error.status === 401 
+      return error.status === 401
         ? unauthorizedResponse(error.message)
         : forbiddenResponse(error.message)
     }
@@ -72,15 +72,15 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     await requireAuth()
-    
+
     const supabase = await createClient()
     const body = await request.json()
-    
+
     // Boş body kontrolü
     if (!body || Object.keys(body).length === 0) {
       return errorResponse('Güncellenecek ayar bulunamadı')
     }
-    
+
     // İzin verilen ayar key'leri (güvenlik için whitelist)
     const allowedKeys = [
       'whatsapp_telefon',
@@ -95,11 +95,13 @@ export async function PUT(request: NextRequest) {
       'firma_adi',
       'firma_telefon',
       'firma_adres',
+      'email_admin',
+      'email_bildirim_aktif',
     ]
-    
+
     // Sadece izin verilen key'leri filtrele
     const updates: { key: string; value: string | null }[] = []
-    
+
     for (const [key, value] of Object.entries(body)) {
       if (allowedKeys.includes(key)) {
         updates.push({
@@ -108,36 +110,36 @@ export async function PUT(request: NextRequest) {
         })
       }
     }
-    
+
     if (updates.length === 0) {
       return errorResponse('Geçerli ayar key\'i bulunamadı')
     }
-    
+
     // Upsert işlemi (varsa güncelle, yoksa ekle)
     const { error } = await supabase
       .from('ayarlar')
       .upsert(updates, { onConflict: 'key' })
-    
+
     if (error) {
       console.error('Ayarlar güncelleme hatası:', error)
       return serverErrorResponse('Ayarlar güncellenirken hata oluştu')
     }
-    
+
     // Güncel ayarları döndür
     const { data: updatedSettings } = await supabase
       .from('ayarlar')
       .select('key, value')
-    
+
     const settings: Record<string, string | null> = {}
     updatedSettings?.forEach((row) => {
       settings[row.key] = row.value
     })
-    
+
     return successResponse(settings)
-    
+
   } catch (error) {
     if (isAuthError(error)) {
-      return error.status === 401 
+      return error.status === 401
         ? unauthorizedResponse(error.message)
         : forbiddenResponse(error.message)
     }

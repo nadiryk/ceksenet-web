@@ -26,6 +26,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/20/solid'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
@@ -108,6 +109,11 @@ export default function AyarlarPage() {
 
       {/* WhatsApp Ayarları */}
       <WhatsAppSection />
+
+      <Divider />
+
+      {/* E-posta Ayarları */}
+      <EmailSection />
     </div>
   )
 }
@@ -618,6 +624,182 @@ function WhatsAppSection() {
             </div>
           </div>
         )}
+      </div>
+    </section>
+  )
+}// ============================================
+// Email Section
+// ============================================
+
+interface EmailFormData {
+  email_admin: string
+  email_bildirim_aktif: boolean
+}
+
+function EmailSection() {
+  const [formData, setFormData] = useState<EmailFormData>({
+    email_admin: '',
+    email_bildirim_aktif: true,
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/settings')
+      const result = await response.json()
+
+      if (response.ok && result.data) {
+        setFormData({
+          email_admin: result.data.email_admin || '',
+          email_bildirim_aktif: result.data.email_bildirim_aktif === 'true', // value string olarak geliyor
+        })
+      }
+    } catch (err) {
+      console.error('Ayarlar yüklenemedi:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    // Validate email if provided
+    if (formData.email_admin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_admin)) {
+      setError('Geçersiz e-posta adresi.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError(null)
+      setSuccess(false)
+
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email_admin: formData.email_admin,
+          email_bildirim_aktif: String(formData.email_bildirim_aktif), // string olarak kaydediyoruz
+        }),
+      })
+
+      if (!response.ok) {
+        const result = await response.json()
+        throw new Error(result.error || 'Ayarlar kaydedilemedi')
+      }
+
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } catch (err: any) {
+      console.error('Ayarlar kaydedilemedi:', err)
+      setError(err.message || 'Ayarlar kaydedilirken bir hata oluştu.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <EnvelopeIcon className="h-6 w-6 text-blue-600" />
+          <Subheading>E-posta Ayarları</Subheading>
+        </div>
+        <div className="animate-pulse space-y-4 max-w-2xl">
+          <div className="h-10 bg-zinc-100 rounded-lg" />
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section>
+      {/* Section Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <EnvelopeIcon className="h-6 w-6 text-blue-600" />
+        <Subheading>E-posta Ayarları</Subheading>
+      </div>
+      <Text className="mb-6">
+        Sistem bildirimlerinin gönderileceği e-posta ayarlarını yapılandırın.
+      </Text>
+
+      {/* Alerts */}
+      {success && (
+        <div className="mb-6 max-w-2xl flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
+          <CheckCircleIcon className="h-5 w-5 text-green-600 shrink-0" />
+          <div>
+            <Text className="font-medium text-green-800">Başarılı</Text>
+            <Text className="text-sm text-green-700">Ayarlar kaydedildi.</Text>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 max-w-2xl flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <ExclamationTriangleIcon className="h-5 w-5 text-red-600 shrink-0" />
+          <div>
+            <Text className="font-medium text-red-800">Hata</Text>
+            <Text className="text-sm text-red-700">{error}</Text>
+          </div>
+        </div>
+      )}
+
+      {/* Form */}
+      <div className="max-w-2xl space-y-6">
+        <FieldGroup>
+          {/* Admin Email */}
+          <Field>
+            <Label>Yönetici E-posta Adresi</Label>
+            <Description>
+              Sistem bildirimlerinin (ör. yeni evrak, durum değişikliği) gönderileceği e-posta adresi.
+            </Description>
+            <Input
+              type="email"
+              placeholder="admin@sirketadi.com"
+              value={formData.email_admin}
+              onChange={(e) => setFormData((prev) => ({ ...prev, email_admin: e.target.value }))}
+            />
+          </Field>
+
+          {/* Bildirim Aktif */}
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 items-center">
+              <input
+                id="email_bildirim_aktif"
+                name="email_bildirim_aktif"
+                type="checkbox"
+                checked={formData.email_bildirim_aktif}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email_bildirim_aktif: e.target.checked }))}
+                className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-600"
+              />
+            </div>
+            <div className="text-sm leading-6">
+              <label htmlFor="email_bildirim_aktif" className="font-medium text-zinc-900">
+                E-posta Bildirimlerini Aç
+              </label>
+              <p className="text-zinc-500">
+                İşaretlendiğinde, önemli olaylarda (vade hatırlatma, vb.) e-posta gönderilir.
+              </p>
+            </div>
+          </div>
+        </FieldGroup>
+
+        <Divider />
+
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          <Button color="blue" onClick={handleSave} disabled={saving}>
+            {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+        </div>
       </div>
     </section>
   )

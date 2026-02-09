@@ -232,7 +232,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
     try {
       // WhatsApp servisini başlat
       await whatsappService.initialize()
-      
+
       // Ayarlardan telefon numarası al
       const numbers = await whatsappService.getWhatsAppNumbers()
       if (numbers.length === 0) {
@@ -295,8 +295,23 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
       // Eğer cari email yoksa, ayarlardaki admin email'ine gönder
       if (!toEmail) {
-        // Ayarlardan admin email al (basitçe geçici)
-        toEmail = 'admin@example.com' // TODO: Ayarlardan al
+        try {
+          // Ayarlardan admin email al
+          const settingsResponse = await fetch('/api/settings')
+          if (settingsResponse.ok) {
+            const settingsResult = await settingsResponse.json()
+            if (settingsResult.data?.email_admin) {
+              toEmail = settingsResult.data.email_admin
+            }
+          }
+        } catch (settingsErr) {
+          console.error('Ayarlar alınamadı:', settingsErr)
+        }
+
+        // Eğer hala email yoksa hata fırlat
+        if (!toEmail) {
+          throw new Error('Alıcı e-posta adresi bulunamadı. Lütfen cari kartında veya ayarlarda (yönetici) e-posta tanımlayın.')
+        }
       }
 
       // Email konusu ve içeriği

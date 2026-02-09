@@ -40,7 +40,7 @@ export class EmailService {
     try {
       // Çevresel değişkenlerden e-posta yapılandırmasını al
       const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
-      
+
       switch (emailProvider.toLowerCase()) {
         case 'sendgrid':
           return await this.sendWithSendGrid(options);
@@ -59,7 +59,7 @@ export class EmailService {
    */
   private async sendWithSendGrid(options: EmailOptions): Promise<boolean> {
     const apiKey = process.env.SENDGRID_API_KEY;
-    
+
     if (!apiKey) {
       console.error('SendGrid API anahtarı bulunamadı. Lütfen SENDGRID_API_KEY çevresel değişkenini ayarlayın.');
       return false;
@@ -74,8 +74,8 @@ export class EmailService {
         },
         body: JSON.stringify({
           personalizations: [{
-            to: Array.isArray(options.to) 
-              ? options.to.map(email => ({ email })) 
+            to: Array.isArray(options.to)
+              ? options.to.map(email => ({ email }))
               : [{ email: options.to }]
           }],
           from: {
@@ -101,7 +101,7 @@ export class EmailService {
         const errorText = await response.text();
         console.error('SendGrid hatası:', errorText);
       }
-      
+
       return success;
     } catch (error) {
       console.error('SendGrid API hatası:', error);
@@ -117,7 +117,7 @@ export class EmailService {
     // Bu fonksiyon bir backend API'sini çağırmalı
     // Alternatif olarak doğrudan SMTP bağlantısı kurulabilir ama Next.js edge'de mümkün değil
     // Bu nedenle bir API route kullanacağız
-    
+
     try {
       const response = await fetch('/api/email/send', {
         method: 'POST',
@@ -159,7 +159,7 @@ export class EmailService {
 
       // E-posta adreslerini çıkar
       const emails: string[] = [];
-      
+
       // Alternatif: auth.users tablosuna join yapmak yerine ayarlardan al
       // Şimdilik sabit bir e-posta listesi döndürelim
       const defaultEmail = process.env.ADMIN_EMAIL;
@@ -171,10 +171,11 @@ export class EmailService {
       const { data: settings } = await this.supabase
         .from('ayarlar')
         .select('value')
-        .eq('key', 'admin_emails')
+        .eq('key', 'email_admin') // Updated key
         .single();
 
       if (settings?.value) {
+        // Handle comma separated list if multiple are provided
         const additionalEmails = settings.value.split(',').map((email: string) => email.trim());
         emails.push(...additionalEmails);
       }
@@ -192,7 +193,7 @@ export class EmailService {
    */
   async sendDailyReport(reportData: any): Promise<boolean> {
     const adminEmails = await this.getAdminEmails();
-    
+
     if (adminEmails.length === 0) {
       console.warn('Günlük rapor gönderilemedi: Admin e-posta adresi bulunamadı.');
       return false;
@@ -386,12 +387,12 @@ export class EmailService {
   private generateDailyReportText(reportData: any, date: string): string {
     let text = `ÇEK SENET GÜNLÜK RAPORU - ${date}\n`;
     text += '='.repeat(50) + '\n\n';
-    
+
     text += `Yeni Evraklar: ${reportData.dailyStats?.newEvraklar || 0}\n`;
     text += `Durum Değişimleri: ${reportData.dailyStats?.statusChanges || 0}\n`;
     text += `Toplam Tutar: ${reportData.dailyStats?.totalAmount || 0} TRY\n`;
     text += `Yaklaşan Vadeler: ${reportData.upcomingEvraklar?.length || 0}\n\n`;
-    
+
     if (reportData.newEvraklar?.length > 0) {
       text += 'YENİ EKLEDİĞİNİZ EVRAKLAR:\n';
       reportData.newEvraklar.slice(0, 3).forEach((evrak: any) => {
@@ -399,7 +400,7 @@ export class EmailService {
       });
       text += '\n';
     }
-    
+
     if (reportData.upcomingEvraklar?.length > 0) {
       text += 'YAKLAŞAN VADELER (7 gün içinde):\n';
       reportData.upcomingEvraklar.slice(0, 5).forEach((evrak: any) => {
@@ -407,10 +408,10 @@ export class EmailService {
       });
       text += '\n';
     }
-    
+
     text += 'Bu rapor ÇekSenet Web uygulaması tarafından otomatik olarak oluşturulmuştur.\n';
     text += `Uygulamaya giriş: ${process.env.APP_URL || 'https://ceksenet.com'}\n`;
-    
+
     return text;
   }
 }
