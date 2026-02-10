@@ -45,7 +45,7 @@ import {
 import { formatCurrency, formatDate, getDurumLabel, getDurumColor, getEvrakTipiLabel } from '@/lib/utils/format'
 import EvrakFotograflar from '@/components/evrak/EvrakFotograflar'
 import { whatsappService } from '@/lib/whatsapp'
-import { openEmailClient } from '@/lib/client-email'
+import { sendEmail } from '@/lib/client-email'
 
 // ============================================
 // Types
@@ -197,15 +197,16 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   // ============================================
   // Email Gönderimi (Client-side / Outlook)
   // ============================================
+  // Email Gönderimi (Server-side / SMTP)
+  // ============================================
 
-  const handleSendEmailMessage = () => {
+  const handleSendEmailMessage = async () => {
     if (!evrak) return
 
     setIsEmailSending(true)
     setEmailError(null)
 
     try {
-      // Client-side email utility kullan (Server dependencies yok)
       const toEmail = targetEmail
 
       if (!toEmail) {
@@ -215,28 +216,42 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         return
       }
 
-      // Email konusu ve içeriği (Düz metin)
+      // Email konusu ve içeriği (HTML formatı destekli)
       const subject = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - ${evrak.evrak_no}`
 
-      const body = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri\n\n` +
-        `Evrak No: ${evrak.evrak_no}\n` +
-        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
-        `Vade: ${formatDate(evrak.vade_tarihi)}\n` +
-        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n\n` +
-        `Bilgilerinize sunarız.`
+      const html = `
+        <h3>${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri</h3>
+        <p><strong>Evrak No:</strong> ${evrak.evrak_no}</p>
+        <p><strong>Tutar:</strong> ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}</p>
+        <p><strong>Vade:</strong> ${formatDate(evrak.vade_tarihi)}</p>
+        <p><strong>Cari:</strong> ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}</p>
+        <p><strong>Durum:</strong> ${getDurumLabel(evrak.durum)}</p>
+        <br>
+        <p>Bilgilerinize sunarız.</p>
+        <hr>
+        <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak gönderilmiştir.</small>
+      `
 
-      // Client'ı aç (Senkron çalışmalı - yeni utility)
-      openEmailClient(toEmail, subject, body)
+      // Server-side gönderim (Async)
+      const result = await sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text: html.replace(/<[^>]*>/g, '') // Basit text fallback
+      })
 
-      setEmailSuccess('Outlook açılıyor...')
-
-      setTimeout(() => {
-        setEmailSuccess(null)
-        setIsEmailSending(false)
-      }, 3000)
+      if (result.success) {
+        setEmailSuccess('E-posta başarıyla gönderildi.')
+        setTimeout(() => {
+          setEmailSuccess(null)
+          setIsEmailSending(false)
+        }, 3000)
+      } else {
+        throw new Error(result.message)
+      }
 
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
+      setEmailError(err instanceof Error ? err.message : 'E-posta gönderilemedi.')
       setIsEmailSending(false)
     }
   }

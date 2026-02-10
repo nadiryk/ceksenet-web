@@ -657,6 +657,7 @@ function EmailSection() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -740,6 +741,59 @@ function EmailSection() {
       setError(err.message || 'Ayarlar kaydedilirken bir hata oluştu.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    if (!formData.email_admin) {
+      setError('Test işlemi için "Yönetici E-posta Adresi" alanını doldurunuz ve kaydediniz.')
+      return
+    }
+
+    try {
+      setTesting(true)
+      setError(null)
+      setSuccess(false)
+
+      // Not: Test için veritabanındaki kayıtlı ayarlar kullanılır.
+      // Bu yüzden önce kaydetmelerini istiyoruz (UI'da belirtebiliriz veya otomatik kaydet yapabiliriz)
+
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: formData.email_admin,
+          subject: 'ÇekSenet Web - SMTP Testi',
+          html: `
+            <h3>SMTP Bağlantı Testi Başarılı</h3>
+            <p>Bu e-posta, SMTP ayarlarınızın doğru yapılandırıldığını doğrulamak için gönderilmiştir.</p>
+            <p><strong>Zaman:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+            <br>
+            <p>Eğer bu e-postayı görüyorsanız, sisteminiz e-posta göndermeye hazırdır.</p>
+          `,
+          text: 'SMTP Bağlantı Testi Başarılı. Ayarlarınız doğru çalışıyor.'
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Test e-postası gönderilemedi')
+      }
+
+      if (result.data?.simulated) {
+        throw new Error(`Simülasyon Modu: ${result.data.message}. Ayarlarınız kaydedilmemiş veya eksik olabilir.`)
+      }
+
+      setSuccess(true)
+      // Success mesajını override et veya özel mesaj göster
+      // Şimdilik success state yeterli, 'Başarılı' alert çıkacak
+
+    } catch (err: any) {
+      console.error('Test hatası:', err)
+      setError(err.message || 'Test bağlantısı başarısız oldu.')
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -929,8 +983,11 @@ function EmailSection() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <Button color="blue" onClick={handleSave} disabled={saving}>
+          <Button color="blue" onClick={handleSave} disabled={saving || testing}>
             {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+          <Button outline onClick={handleTestConnection} disabled={saving || testing}>
+            {testing ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
           </Button>
         </div>
       </div>

@@ -55,7 +55,7 @@ import {
   getEvrakTipiLabel,
 } from '@/lib/utils/format'
 import { whatsappService } from '@/lib/whatsapp'
-import { openEmailClient } from '@/lib/client-email'
+import { sendEmail } from '@/lib/client-email'
 
 // ============================================
 // Types
@@ -337,41 +337,65 @@ export default function CariDetayPage() {
   // Email Gönderimi (Client-side / Outlook)
   // ============================================
 
-  const handleSendEmailMessage = () => {
+  // ============================================
+  // Email Gönderimi (Server-side / SMTP)
+  // ============================================
+
+  const handleSendEmailMessage = async () => {
     if (!cari) return
 
     setIsEmailSending(true)
     setEmailError(null)
 
     try {
-      // Client-side email utility kullan
       const toEmail = cari.email || ''
 
       if (!toEmail) {
-        console.warn('Cari email bulunamadı, boş açılacak')
+        console.warn('Cari email bulunamadı')
+        setEmailError('Cari e-posta adresi bulunamadı.')
+        setIsEmailSending(false)
+        return
       }
 
       // Email konusu ve içeriği 
       const subject = `Cari Bilgileri - ${cari.ad_soyad}`
 
-      const body = `Cari Bilgileri\n\n` +
-        `Ad Soyad: ${cari.ad_soyad}\n` +
-        `Telefon: ${cari.telefon || 'Belirtilmemiş'}\n` +
-        `Email: ${cari.email || 'Belirtilmemiş'}\n\n` +
-        `Bilgilerinize sunarız.`
+      const html = `
+        <h3>Cari Bilgileri</h3>
+        <p><strong>Ad Soyad:</strong> ${cari.ad_soyad}</p>
+        <p><strong>Tip:</strong> ${getCariTipLabel(cari.tip)}</p>
+        <p><strong>Telefon:</strong> ${cari.telefon || 'Belirtilmemiş'}</p>
+        <p><strong>Email:</strong> ${cari.email || 'Belirtilmemiş'}</p>
+        <p><strong>Vergi No:</strong> ${cari.vergi_no || 'Belirtilmemiş'}</p>
+        <p><strong>Adres:</strong> ${cari.adres || 'Belirtilmemiş'}</p>
+        <p><strong>Evrak Sayısı:</strong> ${cari.evrak_sayisi}</p>
+        <p><strong>Kayıt Tarihi:</strong> ${formatDateTime(cari.created_at)}</p>
+        <br>
+        <p>Bilgilerinize sunarız.</p>
+        <hr>
+        <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak gönderilmiştir.</small>
+      `
 
-      // Client'ı aç (Senkron)
-      openEmailClient(toEmail, subject, body)
+      // Server-side gönderim (Async)
+      const result = await sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text: html.replace(/<[^>]*>/g, '') // Basit text fallback
+      })
 
-      setEmailSuccess('Outlook açılıyor...')
-
-      setTimeout(() => {
-        setEmailSuccess(null)
-        setIsEmailSending(false)
-      }, 3000)
+      if (result.success) {
+        setEmailSuccess('E-posta başarıyla gönderildi.')
+        setTimeout(() => {
+          setEmailSuccess(null)
+          setIsEmailSending(false)
+        }, 3000)
+      } else {
+        throw new Error(result.message)
+      }
 
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
+      setEmailError(err instanceof Error ? err.message : 'E-posta gönderilemedi.')
       setIsEmailSending(false)
     }
   }
