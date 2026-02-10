@@ -221,10 +221,8 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
       const body = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri\n\n` +
         `Evrak No: ${evrak.evrak_no}\n` +
         `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
-        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
-        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
-        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n` +
-        `Durum: ${getDurumLabel(evrak.durum)}\n\n` +
+        `Vade: ${formatDate(evrak.vade_tarihi)}\n` +
+        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n\n` +
         `Bilgilerinize sunarız.`
 
       // Client'ı aç (Senkron çalışmalı - yeni utility)

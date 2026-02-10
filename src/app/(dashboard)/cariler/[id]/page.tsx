@@ -356,13 +356,8 @@ export default function CariDetayPage() {
 
       const body = `Cari Bilgileri\n\n` +
         `Ad Soyad: ${cari.ad_soyad}\n` +
-        `Tip: ${getCariTipLabel(cari.tip)}\n` +
         `Telefon: ${cari.telefon || 'Belirtilmemiş'}\n` +
-        `Email: ${cari.email || 'Belirtilmemiş'}\n` +
-        `Vergi No: ${cari.vergi_no || 'Belirtilmemiş'}\n` +
-        `Adres: ${cari.adres || 'Belirtilmemiş'}\n` +
-        `Evrak Sayısı: ${cari.evrak_sayisi}\n` +
-        `Kayıt Tarihi: ${formatDateTime(cari.created_at)}\n\n` +
+        `Email: ${cari.email || 'Belirtilmemiş'}\n\n` +
         `Bilgilerinize sunarız.`
 
       // Client'ı aç (Senkron)

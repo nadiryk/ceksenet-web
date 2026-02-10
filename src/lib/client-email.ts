@@ -11,12 +11,21 @@ export function openEmailClient(to: string, subject: string, body: string): void
     }
 
     // Mailto linki oluştur
-    const params = new URLSearchParams();
-    if (subject) params.append('subject', subject);
-    if (body) params.append('body', body);
+    // URLSearchParams boşlukları '+' olarak kodlar, Outlook bunu sevmeyebilir.
+    // Bu yüzden encodeURIComponent kullanarak manuel oluşturuyoruz.
 
-    const url = `mailto:${to}?${params.toString()}`;
+    const subjectEncoded = encodeURIComponent(subject).replace(/\+/g, '%20');
+    const bodyEncoded = encodeURIComponent(body).replace(/\+/g, '%20');
 
-    // Mevcut pencerede aç (Mailto için en güvenilir yöntem)
-    window.location.href = url;
+    // Outlook için satır sonları %0D%0A olmalı
+    const bodyFinal = bodyEncoded.replace(/%0A/g, '%0D%0A');
+
+    const url = `mailto:${to}?subject=${subjectEncoded}&body=${bodyFinal}`;
+
+    try {
+        // Mevcut pencerede aç
+        window.location.href = url;
+    } catch (e) {
+        console.error('Mailto linki açılırken hata:', e);
+    }
 }
