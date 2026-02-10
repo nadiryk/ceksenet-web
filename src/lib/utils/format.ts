@@ -6,12 +6,21 @@
  * Para tutarını formatla (₺1.234,56)
  */
 export function formatCurrency(amount: number, currency: string = 'TRY'): string {
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)
+  // TR kodunu TRY olarak düzelt
+  const validCurrency = currency === 'TR' ? 'TRY' : currency;
+
+  try {
+    return new Intl.NumberFormat('tr-TR', {
+      style: 'currency',
+      currency: validCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch (error) {
+    console.error('Format currency error:', error);
+    // Hata durumunda fallback
+    return `${amount.toFixed(2)} ${validCurrency}`;
+  }
 }
 
 /**
