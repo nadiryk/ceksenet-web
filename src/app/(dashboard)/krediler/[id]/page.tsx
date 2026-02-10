@@ -601,6 +601,34 @@ export default function KrediDetayPage() {
         </div>
       )}
 
+      {/* WhatsApp Messages */}
+      {whatsAppSuccess && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          <CheckCircleIcon className="h-5 w-5" />
+          {whatsAppSuccess}
+        </div>
+      )}
+      {whatsAppError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <ExclamationTriangleIcon className="h-5 w-5" />
+          {whatsAppError}
+        </div>
+      )}
+
+      {/* Email Messages */}
+      {emailSuccess && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          <CheckCircleIcon className="h-5 w-5" />
+          {emailSuccess}
+        </div>
+      )}
+      {emailError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <ExclamationTriangleIcon className="h-5 w-5" />
+          {emailError}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
