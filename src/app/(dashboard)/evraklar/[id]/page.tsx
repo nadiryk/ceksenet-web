@@ -246,7 +246,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
       // Değişkenleri değiştir
       const variables: Record<string, string> = {
         '{evrak_no}': evrak.evrak_no,
-        '{tutar}': formatCurrency(evrak.tutar, 'TR').replace('₺', '').trim(), // Sadece sayı
+        '{tutar}': formatCurrency(evrak.tutar, 'TRY').replace('₺', '').trim(), // Sadece sayı
         '{para_birimi}': evrak.para_birimi || 'TRY',
         '{vade_tarihi}': formatDate(evrak.vade_tarihi),
         '{evrak_tipi}': evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet',
