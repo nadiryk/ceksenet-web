@@ -40,6 +40,7 @@ import {
   CalendarDaysIcon,
   CurrencyDollarIcon,
   ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/20/solid'
 import {
   formatCurrency,
@@ -51,6 +52,7 @@ import {
 } from '@/lib/utils/format'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { whatsappService } from '@/lib/whatsapp'
+import { sendEmail } from '@/lib/client-email'
 
 // ============================================
 // Types
@@ -437,6 +439,98 @@ export default function KrediDetayPage() {
   }
 
   // ============================================
+  // Email Gönderimi (Server-side / SMTP)
+  // ============================================
+
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
+
+  const handleSendEmailMessage = async () => {
+    if (!kredi) return
+
+    setIsEmailSending(true)
+    setEmailError(null)
+    setEmailSuccess(null)
+
+    try {
+      // Kime gönderilecek? Kredide bir "ilgili kişi" yok, varsayılan olarak Admin email'e gönderelim
+      // veya kullanıcıya sorabiliriz. Şimdilik AdminEmail'i client-side alamadığımız için,
+      // API tarafında 'admin' flag'i ile gönderebiliriz ama API bunu desteklemiyor.
+      // E-posta servisine "to" parametresi zorunlu.
+
+      // Çözüm: Kredi detayında email sorabilirdik ama basit tutmak için:
+      // Banka şubesi vs. yok.
+      // Sadece yöneticiye bilgi maili atalım.
+      // Bunun için önce admin emailini çekmemiz lazım ama client-side'da auth user email var.
+      // Şu anki kullanıcıya gönderelim?
+
+      const { data: { user } } = await (await import('@/lib/supabase/client')).createClient().auth.getUser()
+      const toEmail = user?.email
+
+      if (!toEmail) {
+        throw new Error('Gönderilecek e-posta adresi bulunamadı.')
+      }
+
+      // Email konusu ve içeriği (HTML formatı destekli)
+      const subject = `Kredi Bilgileri - ${kredi.banka?.ad || 'Banka'}`
+
+      const html = `
+        <h3>Kredi Bilgileri</h3>
+        <ul>
+          <li><strong>Banka:</strong> ${kredi.banka?.ad || 'Belirtilmemiş'}</li>
+          <li><strong>Tür:</strong> ${KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu}</li>
+          <li><strong>Anapara:</strong> ${formatCurrency(kredi.anapara, kredi.para_birimi)}</li>
+          <li><strong>Toplam Ödeme:</strong> ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}</li>
+          <li><strong>Vade:</strong> ${kredi.vade_ay} Ay</li>
+          <li><strong>Başlangıç:</strong> ${formatDate(kredi.baslangic_tarihi)}</li>
+        </ul>
+        <hr>
+        <h4>Özet Durum</h4>
+        <ul>
+          <li><strong>Ödenen Taksit:</strong> ${kredi.ozet.odenen_taksit} / ${kredi.ozet.toplam_taksit}</li>
+          <li><strong>Kalan Borç:</strong> ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}</li>
+          <li><strong>Geciken Taksit:</strong> ${kredi.ozet.geciken_taksit} Adet</li>
+        </ul>
+        <br>
+        <p>Bilgilerinize sunarız.</p>
+        <hr>
+        <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak gönderilmiştir.</small>
+      `
+
+      // HTML'den Text'e çevirirken satır sonlarını koru
+      const text = html
+        .replace(/<\/li>/g, '\n')
+        .replace(/<\/p>/g, '\n\n')
+        .replace(/<br>/g, '\n')
+        .replace(/<[^>]*>/g, '')
+        .trim()
+
+      // Server-side gönderim (Async)
+      const result = await sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text
+      })
+
+      if (result.success) {
+        setEmailSuccess(`E-posta başarıyla gönderildi (${toEmail}).`)
+        setTimeout(() => {
+          setEmailSuccess(null)
+          setIsEmailSending(false)
+        }, 3000)
+      } else {
+        throw new Error(result.message)
+      }
+
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'E-posta gönderilemedi.')
+      setIsEmailSending(false)
+    }
+  }
+
+  // ============================================
   // Helpers
   // ============================================
 
@@ -543,7 +637,20 @@ export default function KrediDetayPage() {
             ) : (
               <ChatBubbleLeftRightIcon className="h-6 w-6" />
             )}
-            WhatsApp ile Paylaş
+            WhatsApp
+          </Button>
+          <Button
+            color="blue"
+            onClick={handleSendEmailMessage}
+            disabled={isEmailSending}
+            className="shadow-md hover:shadow-lg transition-shadow"
+          >
+            {isEmailSending ? (
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
+            ) : (
+              <EnvelopeIcon className="h-6 w-6" />
+            )}
+            E-posta
           </Button>
           <Button outline onClick={() => router.push(`/krediler/${krediId}/duzenle`)}>
             <PencilSquareIcon className="h-5 w-5" />
@@ -631,7 +738,7 @@ export default function KrediDetayPage() {
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
             <ExclamationTriangleIcon className="h-5 w-5" />
             <Text className="text-sm">
-              <strong>{kredi.ozet.geciken_taksit}</strong> gecikmiş taksit var! 
+              <strong>{kredi.ozet.geciken_taksit}</strong> gecikmiş taksit var!
               Toplam: {formatCurrency(kredi.ozet.geciken_tutar, kredi.para_birimi)}
             </Text>
           </div>

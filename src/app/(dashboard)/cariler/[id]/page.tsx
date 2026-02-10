@@ -348,13 +348,17 @@ export default function CariDetayPage() {
     setEmailError(null)
 
     try {
+      // Admin Routing varsa, cari.email boş olsa bile gönderime izin verilebilir.
+      // Ancak henüz client-side email_admin verisi elimizde yok.
+      // API tarafında zaten "to" boş ise ve adminEmail varsa yöneticiye gidiyor.
+      // Bu yüzden buradaki kontrolü gevşetiyoruz.
+
       const toEmail = cari.email || ''
 
+      // Eğer email yoksa bile göndermeyi dene (API'de admin routing devreye girecek)
+      // Ancak kullanıcıya bilgi vermek gerekebilir.
       if (!toEmail) {
-        console.warn('Cari email bulunamadı')
-        setEmailError('Cari e-posta adresi bulunamadı.')
-        setIsEmailSending(false)
-        return
+        // console.warn('Cari e-posta adresi yok, sadece yöneticiye gidecek.')
       }
 
       // Email konusu ve içeriği 
@@ -362,26 +366,36 @@ export default function CariDetayPage() {
 
       const html = `
         <h3>Cari Bilgileri</h3>
-        <p><strong>Ad Soyad:</strong> ${cari.ad_soyad}</p>
-        <p><strong>Tip:</strong> ${getCariTipLabel(cari.tip)}</p>
-        <p><strong>Telefon:</strong> ${cari.telefon || 'Belirtilmemiş'}</p>
-        <p><strong>Email:</strong> ${cari.email || 'Belirtilmemiş'}</p>
-        <p><strong>Vergi No:</strong> ${cari.vergi_no || 'Belirtilmemiş'}</p>
-        <p><strong>Adres:</strong> ${cari.adres || 'Belirtilmemiş'}</p>
-        <p><strong>Evrak Sayısı:</strong> ${cari.evrak_sayisi}</p>
-        <p><strong>Kayıt Tarihi:</strong> ${formatDateTime(cari.created_at)}</p>
+        <ul>
+          <li><strong>Ad Soyad:</strong> ${cari.ad_soyad}</li>
+          <li><strong>Tip:</strong> ${getCariTipLabel(cari.tip)}</li>
+          <li><strong>Telefon:</strong> ${cari.telefon || 'Belirtilmemiş'}</li>
+          <li><strong>Email:</strong> ${cari.email || 'Belirtilmemiş'}</li>
+          <li><strong>Vergi No:</strong> ${cari.vergi_no || 'Belirtilmemiş'}</li>
+          <li><strong>Adres:</strong> ${cari.adres || 'Belirtilmemiş'}</li>
+          <li><strong>Evrak Sayısı:</strong> ${cari.evrak_sayisi}</li>
+          <li><strong>Kayıt Tarihi:</strong> ${formatDateTime(cari.created_at)}</li>
+        </ul>
         <br>
         <p>Bilgilerinize sunarız.</p>
         <hr>
         <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak gönderilmiştir.</small>
       `
 
+      // HTML'den Text'e çevirirken satır sonlarını koru
+      const text = html
+        .replace(/<\/li>/g, '\n')
+        .replace(/<\/p>/g, '\n\n')
+        .replace(/<br>/g, '\n')
+        .replace(/<[^>]*>/g, '')
+        .trim()
+
       // Server-side gönderim (Async)
       const result = await sendEmail({
         to: toEmail,
         subject,
         html,
-        text: html.replace(/<[^>]*>/g, '') // Basit text fallback
+        text
       })
 
       if (result.success) {

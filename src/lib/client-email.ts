@@ -30,11 +30,17 @@ export function openEmailClient(to: string, subject: string, body: string): void
     }
 }
 
-interface SendEmailParams {
-    to: string | string[];
-    subject: string;
-    html: string;
-    text?: string;
+export interface SendEmailParams {
+    to?: string | string[] // Opsiyonel yaptık çünkü adminrouting varsa to zorunlu değil
+    subject: string
+    html: string
+    text?: string
+    attachments?: Array<{
+        filename: string
+        content: string // base64 encoded string
+        contentType?: string
+        encoding?: string
+    }>
 }
 
 interface SendEmailResult {

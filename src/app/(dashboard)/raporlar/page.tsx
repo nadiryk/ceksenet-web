@@ -29,8 +29,14 @@ import {
   CurrencyDollarIcon,
   DocumentChartBarIcon,
   ExclamationTriangleIcon,
+  ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/20/solid'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { whatsappService } from '@/lib/whatsapp'
+import { sendEmail } from '@/lib/client-email'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 // ============================================
 // Types
@@ -179,22 +185,25 @@ function StatCard({ title, value, subtitle, icon, color }: StatCardProps) {
 
 export default function RaporlarPage() {
   const router = useRouter()
-  
+
   // Filtre state
   const [baslangic, setBaslangic] = useState(getAyBaslangic())
   const [bitis, setBitis] = useState(getAySonu())
   const [durum, setDurum] = useState('')
   const [evrakTipi, setEvrakTipi] = useState('')
   const [search, setSearch] = useState('')
-  
+
   // Data state
   const [evraklar, setEvraklar] = useState<Evrak[]>([])
   const [ozet, setOzet] = useState<RaporOzet | null>(null)
-  
+
   // Loading states
   const [isLoading, setIsLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
+  const [isEmailSending, setIsEmailSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   // ============================================
   // Handlers
@@ -206,16 +215,16 @@ export default function RaporlarPage() {
       cek: { adet: 0, tutar: 0 },
       senet: { adet: 0, tutar: 0 },
     }
-    
+
     for (const evrak of data) {
       // TRY karşılığı hesapla
-      const tryTutar = evrak.para_birimi === 'TRY' 
-        ? evrak.tutar 
+      const tryTutar = evrak.para_birimi === 'TRY'
+        ? evrak.tutar
         : evrak.tutar * (evrak.doviz_kuru || 1)
-      
+
       ozet.toplam.adet++
       ozet.toplam.tutar += tryTutar
-      
+
       if (evrak.evrak_tipi === 'cek') {
         ozet.cek.adet++
         ozet.cek.tutar += tryTutar
@@ -224,7 +233,7 @@ export default function RaporlarPage() {
         ozet.senet.tutar += tryTutar
       }
     }
-    
+
     return ozet
   }
 
@@ -248,22 +257,22 @@ export default function RaporlarPage() {
       params.set('vade_baslangic', baslangic)
       params.set('vade_bitis', bitis)
       params.set('limit', '1000') // Tüm sonuçları al
-      
+
       if (durum) params.set('durum', durum)
       if (evrakTipi) params.set('evrak_tipi', evrakTipi)
       if (search) params.set('search', search)
-      
+
       const response = await fetch(`/api/evraklar?${params.toString()}`)
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Rapor oluşturulamadı')
       }
-      
+
       const data = result.data || []
       setEvraklar(data)
       setOzet(hesaplaOzet(data))
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Rapor oluşturulurken hata oluştu')
       setEvraklar([])
@@ -287,18 +296,18 @@ export default function RaporlarPage() {
       const params = new URLSearchParams()
       params.set('vade_baslangic', baslangic)
       params.set('vade_bitis', bitis)
-      
+
       if (durum) params.set('durum', durum)
       if (evrakTipi) params.set('evrak_tipi', evrakTipi)
       if (search) params.set('search', search)
-      
+
       const response = await fetch(`/api/raporlar/excel?${params.toString()}`)
-      
+
       if (!response.ok) {
         const result = await response.json()
         throw new Error(result.error || 'Excel export başarısız')
       }
-      
+
       // Blob olarak indir
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
@@ -309,11 +318,178 @@ export default function RaporlarPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Excel export sırasında hata oluştu')
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleSendWhatsApp = async () => {
+    if (!ozet) return
+
+    setIsWhatsAppSending(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // WhatsApp servisini başlat
+      await whatsappService.initialize()
+
+      // Ayarlardan telefon numarası al
+      const numbers = await whatsappService.getWhatsAppNumbers()
+      if (numbers.length === 0) {
+        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış.')
+      }
+
+      // Mesaj şablonu oluştur
+      const message = `*ÇekSenet Rapor Özeti*\n` +
+        `Tarih Aralığı: ${formatDate(baslangic)} - ${formatDate(bitis)}\n` +
+        `Toplam Evrak: ${ozet.toplam.adet} Adet\n` +
+        `Toplam Tutar: ${formatCurrency(ozet.toplam.tutar)}\n\n` +
+        `*Detaylar:*\n` +
+        `Çek: ${ozet.cek.adet} Adet - ${formatCurrency(ozet.cek.tutar)}\n` +
+        `Senet: ${ozet.senet.adet} Adet - ${formatCurrency(ozet.senet.tutar)}`
+
+      // İlk telefon numarasına gönder
+      const result = await whatsappService.sendSingleMessage({
+        telefon: numbers[0],
+        mesaj: message
+      })
+
+      if (result) {
+        setSuccess('Rapor özeti WhatsApp ile gönderildi.')
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        throw new Error('WhatsApp mesajı gönderilemedi.')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'WhatsApp gönderim hatası')
+    } finally {
+      setIsWhatsAppSending(false)
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!ozet) return
+
+    setIsEmailSending(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Gönderilecek e-posta adresi (Current user via Auth helper logic or API call)
+      // Burada client-side auth state'i olmadığı için, supabase ile alalım
+      const { data: { user } } = await (await import('@/lib/supabase/client')).createClient().auth.getUser()
+      const toEmail = user?.email
+
+      if (!toEmail) {
+        throw new Error('E-posta adresi bulunamadı.')
+      }
+
+      const subject = `Rapor Özeti (${formatDate(baslangic)} - ${formatDate(bitis)})`
+
+      const html = `
+        <h3>ÇekSenet Rapor Özeti</h3>
+        <p><strong>Tarih Aralığı:</strong> ${formatDate(baslangic)} - ${formatDate(bitis)}</p>
+        <hr>
+        <h4>Genel Toplam</h4>
+        <p><strong>Adet:</strong> ${ozet.toplam.adet}</p>
+        <p><strong>Tutar:</strong> ${formatCurrency(ozet.toplam.tutar)}</p>
+        <br>
+        <h4>Detaylar</h4>
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+          <tr>
+            <th style="padding: 8px; text-align: left;">Tip</th>
+            <th style="padding: 8px; text-align: left;">Adet</th>
+            <th style="padding: 8px; text-align: left;">Tutar</th>
+          </tr>
+          <tr>
+            <td style="padding: 8px;">Çek</td>
+            <td style="padding: 8px;">${ozet.cek.adet}</td>
+            <td style="padding: 8px;">${formatCurrency(ozet.cek.tutar)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px;">Senet</td>
+            <td style="padding: 8px;">${ozet.senet.adet}</td>
+            <td style="padding: 8px;">${formatCurrency(ozet.senet.tutar)}</td>
+          </tr>
+        </table>
+        <br>
+        <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak oluşturulmuştur.</small>
+      `
+
+      // ============================================
+      // Excel Raporunu Ekle (Attachment)
+      // ============================================
+
+      let attachments = []
+
+      try {
+        // Excel raporunu API'den çek
+        const params = new URLSearchParams()
+        params.set('vade_baslangic', baslangic)
+        params.set('vade_bitis', bitis)
+        if (durum) params.set('durum', durum)
+        if (evrakTipi) params.set('evrak_tipi', evrakTipi)
+        if (search) params.set('search', search)
+
+        const excelResponse = await fetch(`/api/raporlar/excel?${params.toString()}`)
+
+        if (excelResponse.ok) {
+          const blob = await excelResponse.blob()
+
+          // Blob'u Base64 string'e çevir
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              const result = reader.result as string
+              // "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," kısmını kaldır
+              const base64Data = result.split(',')[1]
+              resolve(base64Data)
+            }
+            reader.readAsDataURL(blob)
+          })
+
+          attachments.push({
+            filename: `Rapor_${baslangic}_${bitis}.xlsx`,
+            content: base64,
+            encoding: 'base64'
+          })
+        } else {
+          console.error('Excel raporu oluşturulamadı, e-posta eksiz gönderilecek.')
+        }
+      } catch (excelErr) {
+        console.error('Excel ekleme hatası:', excelErr)
+        // Hata olsa da devam et, sadece eklentisiz gönder
+      }
+
+      // Server-side gönderim
+      const result = await sendEmail({
+        to: toEmail,
+        subject,
+        html,
+        text: html
+          .replace(/<\/tr>/g, '\n')
+          .replace(/<\/p>/g, '\n\n')
+          .replace(/<br>/g, '\n')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim(),
+        attachments: attachments
+      })
+
+      if (result.success) {
+        setSuccess(`Rapor e-postası gönderildi (${toEmail}).`)
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        throw new Error(result.message)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'E-posta gönderim hatası')
+    } finally {
+      setIsEmailSending(false)
     }
   }
 
@@ -470,6 +646,16 @@ export default function RaporlarPage() {
         </div>
       )}
 
+      {/* Success Display */}
+      {success && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            {success}
+          </div>
+        </div>
+      )}
+
       {/* Rapor Sonuçları */}
       {ozet && (
         <>
@@ -505,7 +691,7 @@ export default function RaporlarPage() {
 
           {/* Excel Export Butonu */}
           {evraklar.length > 0 && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button
                 color="green"
                 onClick={handleExcelExport}
@@ -516,7 +702,33 @@ export default function RaporlarPage() {
                 ) : (
                   <ArrowDownTrayIcon className="h-5 w-5" />
                 )}
-                Excel İndir ({evraklar.length} evrak)
+                Excel
+              </Button>
+              <Button
+                color="green"
+                onClick={handleSendWhatsApp}
+                disabled={isWhatsAppSending}
+                className="shadow-md hover:shadow-lg transition-shadow"
+              >
+                {isWhatsAppSending ? (
+                  <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                ) : (
+                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                )}
+                WhatsApp
+              </Button>
+              <Button
+                color="blue"
+                onClick={handleSendEmail}
+                disabled={isEmailSending}
+                className="shadow-md hover:shadow-lg transition-shadow"
+              >
+                {isEmailSending ? (
+                  <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                ) : (
+                  <EnvelopeIcon className="h-5 w-5" />
+                )}
+                E-posta
               </Button>
             </div>
           )}
@@ -538,8 +750,8 @@ export default function RaporlarPage() {
                 </TableHead>
                 <TableBody>
                   {evraklar.map((evrak) => (
-                    <TableRow 
-                      key={evrak.id} 
+                    <TableRow
+                      key={evrak.id}
                       href={`/evraklar/${evrak.id}`}
                       className="cursor-pointer hover:bg-zinc-50"
                     >

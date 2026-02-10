@@ -32,10 +32,12 @@ import { createClient } from '@/lib/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, subject, html, text } = body;
+    const { to, subject, html, text, attachments } = body;
 
-    if (!to || !subject || !html) {
-      return errorResponse('to, subject ve html alanları zorunludur');
+    // attachments: { filename: string, content: string (base64) | buffer, contentType?: string }[]
+
+    if (!subject || !html) {
+      return errorResponse('subject ve html alanları zorunludur');
     }
 
     // Supabase'den ayarları çek
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     const { data: settingsData } = await supabase
       .from('ayarlar')
       .select('key, value')
-      .in('key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_secure', 'email_from', 'email_from_name']);
+      .in('key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_secure', 'email_from', 'email_from_name', 'email_admin']);
 
     // Ayarları objeye çevir
     const settings: Record<string, string> = {};
@@ -89,14 +91,54 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // ADMIN ROUTING LOGIC
+    // E-postayı her zaman yöneticiye gönder, müşteriye gitmesin.
+    const adminEmail = settings.email_admin;
+    let finalTo = to;
+    let finalSubject = subject;
+    let finalHtml = html;
+    let finalText = text;
+
+    // Eğer 'to' boş ise ve yönetici e-postası varsa, yöneticiye gönder.
+    // Eğer 'to' dolu ise ve yönetici e-postası varsa, yine yöneticiye gönder (disclaimer ile).
+
+    if (adminEmail) {
+      // Orijinal alıcıyı gövdeye ekle
+      const originalTo = to ? (Array.isArray(to) ? to.join(', ') : to) : '(Alıcı Belirtilmemiş)';
+
+      const disclaimerHtml = `
+        <div style="background-color: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; margin-bottom: 20px; font-size: 12px;">
+          <strong>SİSTEM BİLGİSİ:</strong> Bu e-posta normalde <u>${originalTo}</u> adresine gönderilecekti.<br>
+          Yönetici modu aktif olduğu için sadece size (${adminEmail}) yönlendirildi.
+        </div>
+        <hr>
+      `;
+
+      const disclaimerText = `[SİSTEM BİLGİSİ: Bu e-posta normalde ${originalTo} adresine gönderilecekti. Yönetici modu aktif olduğu için sadece size yönlendirildi.]\n\n`;
+
+      finalTo = adminEmail;
+      finalHtml = disclaimerHtml + html;
+      finalText = text ? (disclaimerText + text) : undefined;
+
+      // Konuya da ekleyelim ki karışmasın
+      finalSubject = `[ADMIN YÖNLENDİRME] ${subject}`;
+    } else if (!to) {
+      // Yönetici email yok ve TO yok -> Hata
+      return errorResponse('Alıcı e-posta adresi (to) zorunludur veya Ayarlardan Yönetici E-postası tanımlanmalıdır.');
+    }
+
     // E-posta seçenekleri
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"${smtpFromName}" <${smtpFrom}>`,
-      to: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      html,
-      text: text || html.replace(/<[^>]*>/g, ''), // HTML'den düz metin oluştur
+      to: Array.isArray(finalTo) ? finalTo.join(', ') : finalTo,
+      subject: finalSubject,
+      html: finalHtml,
+      text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // HTML'den düz metin oluştur
     };
+
+    if (attachments && Array.isArray(attachments)) {
+      mailOptions.attachments = attachments;
+    }
 
     // E-postayı gönder
     const info = await transporter.sendMail(mailOptions);

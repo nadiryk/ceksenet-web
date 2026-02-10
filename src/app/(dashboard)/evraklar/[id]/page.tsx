@@ -221,23 +221,33 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
       const html = `
         <h3>${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri</h3>
-        <p><strong>Evrak No:</strong> ${evrak.evrak_no}</p>
-        <p><strong>Tutar:</strong> ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}</p>
-        <p><strong>Vade:</strong> ${formatDate(evrak.vade_tarihi)}</p>
-        <p><strong>Cari:</strong> ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}</p>
-        <p><strong>Durum:</strong> ${getDurumLabel(evrak.durum)}</p>
+        <ul>
+          <li><strong>Evrak No:</strong> ${evrak.evrak_no}</li>
+          <li><strong>Tutar:</strong> ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}</li>
+          <li><strong>Vade:</strong> ${formatDate(evrak.vade_tarihi)}</li>
+          <li><strong>Cari:</strong> ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}</li>
+          <li><strong>Durum:</strong> ${getDurumLabel(evrak.durum)}</li>
+        </ul>
         <br>
         <p>Bilgilerinize sunarız.</p>
         <hr>
         <small>Bu e-posta ÇekSenet Web uygulamasından otomatik olarak gönderilmiştir.</small>
       `
 
+      // HTML'den Text'e çevirirken satır sonlarını koru
+      const text = html
+        .replace(/<\/li>/g, '\n') // Liste öğeleri bitişinde yeni satır
+        .replace(/<\/p>/g, '\n\n') // Paragraf bitişinde iki yeni satır
+        .replace(/<br>/g, '\n') // br etiketlerinde yeni satır
+        .replace(/<[^>]*>/g, '') // Kalan tagleri temizle
+        .trim()
+
       // Server-side gönderim (Async)
       const result = await sendEmail({
         to: toEmail,
         subject,
         html,
-        text: html.replace(/<[^>]*>/g, '') // Basit text fallback
+        text
       })
 
       if (result.success) {
