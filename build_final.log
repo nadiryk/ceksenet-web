@@ -1,0 +1,89 @@
+
+> ceksenet-web@0.1.0 build
+> next build
+
+▲ Next.js 16.1.3 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 25.5s
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/44) ...
+  Generating static pages using 7 workers (11/44) 
+  Generating static pages using 7 workers (22/44) 
+  Generating static pages using 7 workers (33/44) 
+✓ Generating static pages using 7 workers (44/44) in 1032.0ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/change-password
+├ ƒ /api/auth/profile
+├ ƒ /api/bankalar
+├ ƒ /api/bankalar/[id]
+├ ƒ /api/bankalar/search
+├ ƒ /api/cariler
+├ ƒ /api/cariler/[id]
+├ ƒ /api/cron/daily-email
+├ ƒ /api/cron/keep-alive
+├ ƒ /api/cron/whatsapp
+├ ƒ /api/dashboard
+├ ƒ /api/email/send
+├ ƒ /api/evraklar
+├ ƒ /api/evraklar/[id]
+├ ƒ /api/evraklar/[id]/durum
+├ ƒ /api/evraklar/[id]/fotograflar
+├ ƒ /api/evraklar/[id]/fotograflar/[fotoId]
+├ ƒ /api/evraklar/[id]/gecmis
+├ ƒ /api/health
+├ ƒ /api/import/evraklar/import
+├ ƒ /api/import/evraklar/info
+├ ƒ /api/import/evraklar/parse
+├ ƒ /api/import/evraklar/template
+├ ƒ /api/krediler
+├ ƒ /api/krediler/[id]
+├ ƒ /api/krediler/[id]/erken-odeme
+├ ƒ /api/krediler/[id]/taksitler
+├ ƒ /api/krediler/[id]/taksitler/[taksitId]/iptal
+├ ƒ /api/krediler/[id]/taksitler/[taksitId]/ode
+├ ƒ /api/krediler/ozet
+├ ƒ /api/krediler/taksitler/bu-ay
+├ ƒ /api/krediler/taksitler/geciken
+├ ƒ /api/krediler/taksitler/yaklasan
+├ ƒ /api/kurlar
+├ ƒ /api/kurlar/[paraBirimi]
+├ ƒ /api/kurlar/status
+├ ƒ /api/raporlar/excel
+├ ƒ /api/settings
+├ ƒ /api/test/whatsapp
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/users/[id]/reset-password
+├ ƒ /ayarlar
+├ ƒ /ayarlar/kullanicilar
+├ ƒ /ayarlar/profil
+├ ƒ /cariler
+├ ƒ /cariler/[id]
+├ ƒ /cariler/[id]/duzenle
+├ ƒ /cariler/ekle
+├ ƒ /dashboard
+├ ƒ /evraklar
+├ ƒ /evraklar/[id]
+├ ƒ /evraklar/[id]/duzenle
+├ ƒ /evraklar/ekle
+├ ƒ /import-evraklar
+├ ƒ /krediler
+├ ƒ /krediler/[id]
+├ ƒ /krediler/ekle
+├ ○ /login
+└ ƒ /raporlar
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

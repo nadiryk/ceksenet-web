@@ -1,0 +1,24 @@
+
+> ceksenet-web@0.1.0 build
+> next build
+
+▲ Next.js 16.1.3 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 30.3s
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/(dashboard)/evraklar/[id]/page.tsx:489:12
+Type error: Cannot find name 'gecerliDurumlar'. Did you mean 'getGecerliDurumlar'?
+
+[0m [90m 487 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 488 |[39m         [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex gap-2"[39m[33m>[39m
+[31m[1m>[22m[39m[90m 489 |[39m           {gecerliDurumlar[33m.[39mlength [33m>[39m [35m0[39m [33m&&[39m (
+ [90m     |[39m            [31m[1m^[22m[39m
+ [90m 490 |[39m             [33m<[39m[33mButton[39m color[33m=[39m[32m"blue"[39m onClick[33m=[39m{handleOpenDurumModal}[33m>[39m
+ [90m 491 |[39m               [33mDurum[39m [33mDeğiştir[39m
+ [90m 492 |[39m             [33m<[39m[33m/[39m[33mButton[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null

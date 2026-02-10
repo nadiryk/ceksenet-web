@@ -45,7 +45,7 @@ import {
 import { formatCurrency, formatDate, getDurumLabel, getDurumColor, getEvrakTipiLabel } from '@/lib/utils/format'
 import EvrakFotograflar from '@/components/evrak/EvrakFotograflar'
 import { whatsappService } from '@/lib/whatsapp'
-import { EmailService } from '@/lib/email'
+import { openEmailClient } from '@/lib/client-email'
 
 // ============================================
 // Types
@@ -205,9 +205,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
     setEmailError(null)
 
     try {
-      const emailService = new EmailService()
-      // initialize() gerekmez for mailto
-
+      // Client-side email utility kullan (Server dependencies yok)
       const toEmail = targetEmail
 
       if (!toEmail) {
@@ -229,8 +227,8 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         `Durum: ${getDurumLabel(evrak.durum)}\n\n` +
         `Bilgilerinize sunarız.`
 
-      // Client'ı aç (Senkron çalışmalı)
-      emailService.openEmailClient(toEmail, subject, body)
+      // Client'ı aç (Senkron çalışmalı - yeni utility)
+      openEmailClient(toEmail, subject, body)
 
       setEmailSuccess('Outlook açılıyor...')
 
@@ -465,6 +463,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
   const paraBirimi = evrak.para_birimi || 'TRY'
   const isDoviz = paraBirimi !== 'TRY'
+  const gecerliDurumlar = getGecerliDurumlar(evrak.durum)
 
   return (
     <div className="space-y-6">

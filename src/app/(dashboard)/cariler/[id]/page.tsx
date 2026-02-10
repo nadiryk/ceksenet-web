@@ -55,7 +55,7 @@ import {
   getEvrakTipiLabel,
 } from '@/lib/utils/format'
 import { whatsappService } from '@/lib/whatsapp'
-import { EmailService } from '@/lib/email'
+import { openEmailClient } from '@/lib/client-email'
 
 // ============================================
 // Types
@@ -334,7 +334,7 @@ export default function CariDetayPage() {
   }
 
   // ============================================
-  // Email Gönderimi
+  // Email Gönderimi (Client-side / Outlook)
   // ============================================
 
   const handleSendEmailMessage = () => {
@@ -344,9 +344,7 @@ export default function CariDetayPage() {
     setEmailError(null)
 
     try {
-      const emailService = new EmailService()
-      // initialize() gerekmez
-
+      // Client-side email utility kullan
       const toEmail = cari.email || ''
 
       if (!toEmail) {
@@ -368,7 +366,7 @@ export default function CariDetayPage() {
         `Bilgilerinize sunarız.`
 
       // Client'ı aç (Senkron)
-      emailService.openEmailClient(toEmail, subject, body)
+      openEmailClient(toEmail, subject, body)
 
       setEmailSuccess('Outlook açılıyor...')
 
