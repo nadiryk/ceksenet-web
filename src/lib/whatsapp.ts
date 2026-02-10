@@ -398,6 +398,65 @@ export class WhatsAppService {
     const days = parseInt(setting.value, 10);
     return isNaN(days) ? 2 : days;
   }
+
+  /**
+   * WhatsApp mesaj şablonunu al
+   */
+  async getWhatsAppMessageTemplate(): Promise<string> {
+    if (!this.supabase) await this.initialize();
+
+    const defaultMessage = `Merhaba,
+
+{evrak_tipi} bilgileri:
+Evrak No: {evrak_no}
+Tutar: {tutar} {para_birimi}
+Vade Tarihi: {vade_tarihi}
+
+Bilgilerinize sunarız.`;
+
+    if (!this.supabase) {
+      return defaultMessage;
+    }
+
+    const { data: setting, error } = await this.supabase
+      .from('ayarlar')
+      .select('value')
+      .eq('key', 'whatsapp_mesaj')
+      .single();
+
+    if (error || !setting) {
+      return defaultMessage;
+    }
+
+    return setting.value || defaultMessage;
+  }
+  /**
+   * WhatsApp Web'i yeni sekmede aç
+   * VB6 mantığına uygun client-side yönlendirme
+   */
+  openWhatsAppWeb(telefon: string, mesaj: string): void {
+    if (!telefon) {
+      console.warn('WhatsApp için telefon numarası belirtilmedi');
+      return;
+    }
+
+    // Telefon numarasını temizle (Sadece rakamlar)
+    let cleanPhone = telefon.replace(/\D/g, '');
+
+    // Eğer 90 ile başlamıyorsa ve 10 haneli ise başına 90 ekle
+    if (cleanPhone.length === 10) {
+      cleanPhone = '90' + cleanPhone;
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+      cleanPhone = '90' + cleanPhone.substring(1);
+    }
+
+    // URL oluştur
+    const encodedMessage = encodeURIComponent(mesaj);
+    const url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
+
+    // Yeni sekmede aç
+    window.open(url, '_blank');
+  }
 }
 
 // Singleton instance

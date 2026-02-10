@@ -227,41 +227,51 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
     setIsWhatsAppSending(true)
     setWhatsAppError(null)
-    setWhatsAppSuccess(null)
 
     try {
-      // WhatsApp servisini başlat
+      // Servisi başlat
       await whatsappService.initialize()
 
-      // Ayarlardan telefon numarası al
+      // Ayarlardan telefon numarasını al
       const numbers = await whatsappService.getWhatsAppNumbers()
-      if (numbers.length === 0) {
-        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış. Lütfen ayarlar sayfasından bir telefon numarası girin.')
+      const targetPhone = numbers.length > 0 ? numbers[0] : ''
+
+      if (!targetPhone) {
+        throw new Error('Ayarlarda kayıtlı WhatsApp numarası bulunamadı.')
       }
 
-      // Mesaj şablonu oluştur
-      const message = `*${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri*\n` +
-        `Evrak No: ${evrak.evrak_no}\n` +
-        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
-        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
-        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
-        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}`
+      // Şablonu al
+      let message = await whatsappService.getWhatsAppMessageTemplate()
 
-      // İlk telefon numarasına gönder
-      const success = await whatsappService.sendSingleMessage({
-        telefon: numbers[0],
-        mesaj: message,
-        evrak_id: evrak.id
+      // Değişkenleri değiştir
+      const variables: Record<string, string> = {
+        '{evrak_no}': evrak.evrak_no,
+        '{tutar}': formatCurrency(evrak.tutar, 'TR').replace('₺', '').trim(), // Sadece sayı
+        '{para_birimi}': evrak.para_birimi || 'TRY',
+        '{vade_tarihi}': formatDate(evrak.vade_tarihi),
+        '{evrak_tipi}': evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet',
+        '{kesideci}': evrak.kesideci || '-',
+        '{cari}': evrak.cari?.ad_soyad || '-',
+        '{banka}': evrak.banka?.ad || '-',
+      }
+
+      Object.entries(variables).forEach(([key, value]) => {
+        message = message.split(key).join(value)
       })
 
-      if (success) {
-        setWhatsAppSuccess('WhatsApp mesajı başarıyla gönderildi.')
-      } else {
-        throw new Error('WhatsApp mesajı gönderilemedi. Lütfen ayarları kontrol edin.')
-      }
+      // WhatsApp Web'i aç
+      whatsappService.openWhatsAppWeb(targetPhone, message)
+
+      setWhatsAppSuccess('WhatsApp Web açılıyor...')
+
+      // Başarı mesajını kısa süre sonra temizle
+      setTimeout(() => {
+        setWhatsAppSuccess(null)
+        setIsWhatsAppSending(false)
+      }, 3000)
+
     } catch (err) {
-      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
-    } finally {
+      setWhatsAppError(err instanceof Error ? err.message : 'Bir hata oluştu')
       setIsWhatsAppSending(false)
     }
   }
