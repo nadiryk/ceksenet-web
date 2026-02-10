@@ -337,7 +337,7 @@ export default function CariDetayPage() {
   // Email Gönderimi
   // ============================================
 
-  const handleSendEmailMessage = async () => {
+  const handleSendEmailMessage = () => {
     if (!cari) return
 
     setIsEmailSending(true)
@@ -346,7 +346,7 @@ export default function CariDetayPage() {
     try {
       // Email servisini başlat
       const emailService = new EmailService()
-      await emailService.initialize()
+      // initialize() gerekmez
 
       // Cari email adresini al (varsa)
       let toEmail = cari.email || ''
@@ -370,7 +370,7 @@ export default function CariDetayPage() {
         `Kayıt Tarihi: ${formatDateTime(cari.created_at)}\n\n` +
         `Bilgilerinize sunarız.`
 
-      // Client'ı aç
+      // Client'ı aç (Senkron)
       emailService.openEmailClient(toEmail, subject, body)
 
       setEmailSuccess('E-posta istemcisi açılıyor...')

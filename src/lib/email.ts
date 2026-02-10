@@ -452,8 +452,8 @@ export class EmailService {
 
     const url = `mailto:${to}?${params.toString()}`;
 
-    // Yeni pencerede/sekmede aç
-    window.open(url, '_self');
+    // Mevcut pencerede aç (Mailto için en güvenilir yöntem)
+    window.location.href = url;
   }
 }
 

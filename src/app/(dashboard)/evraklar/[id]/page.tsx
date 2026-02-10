@@ -148,12 +148,102 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
 
-  // Geçerli durum geçişleri
-  const gecerliDurumlar = evrak ? getGecerliDurumlar(evrak.durum) : []
+  // Email adresi state
+  const [targetEmail, setTargetEmail] = useState<string>('')
+
+  // Email adresini hazırla (Cari veya Admin)
+  useEffect(() => {
+    const fetchEmail = async () => {
+      if (!evrak) return;
+
+      let email = '';
+
+      // 1. Cari e-postası
+      if (evrak.cari?.id) {
+        try {
+          const cariResponse = await fetch(`/api/cariler/${evrak.cari.id}`);
+          if (cariResponse.ok) {
+            const cariResult = await cariResponse.json();
+            if (cariResult.data?.email) {
+              email = cariResult.data.email;
+            }
+          }
+        } catch (e) {
+          console.error('Cari email alınamadı:', e);
+        }
+      }
+
+      // 2. Eğer cari e-posta yoksa, admin e-postası (ayarlardan)
+      if (!email) {
+        try {
+          const settingsResponse = await fetch('/api/settings');
+          if (settingsResponse.ok) {
+            const settingsResult = await settingsResponse.json();
+            if (settingsResult.data?.email_admin) {
+              email = settingsResult.data.email_admin;
+            }
+          }
+        } catch (e) {
+          console.error('Ayarlar email alınamadı:', e);
+        }
+      }
+
+      setTargetEmail(email);
+    };
+
+    fetchEmail();
+  }, [evrak]);
 
   // ============================================
-  // Data Fetching
+  // Email Gönderimi (Senkron - window.location.href için)
   // ============================================
+
+  const handleSendEmailMessage = () => {
+    if (!evrak) return
+
+    setIsEmailSending(true)
+    setEmailError(null)
+
+    try {
+      const emailService = new EmailService()
+      // initialize() gerekmez, sadece mailto linki oluşturacağız
+
+      const toEmail = targetEmail
+
+      if (!toEmail) {
+        console.warn('Email adresi bulunamadı')
+        setEmailError('Gönderilecek e-posta adresi bulunamadı (Cari veya Yönetici).')
+        setIsEmailSending(false)
+        return
+      }
+
+      // Email konusu ve içeriği (Düz metin)
+      const subject = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - ${evrak.evrak_no}`
+
+      const body = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri\n\n` +
+        `Evrak No: ${evrak.evrak_no}\n` +
+        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
+        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
+        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
+        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n` +
+        `Durum: ${getDurumLabel(evrak.durum)}\n\n` +
+        `Bilgilerinize sunarız.`
+
+      // Client'ı aç (Senkron çalışmalı)
+      emailService.openEmailClient(toEmail, subject, body)
+
+      setEmailSuccess('E-posta istemcisi açılıyor...')
+
+      setTimeout(() => {
+        setEmailSuccess(null)
+        setIsEmailSending(false)
+      }, 3000)
+
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
+      setIsEmailSending(false)
+    }
+  }
 
   const fetchFotograflar = useCallback(async () => {
     try {
@@ -280,61 +370,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   // Email Gönderimi
   // ============================================
 
-  const handleSendEmailMessage = async () => {
-    if (!evrak) return
 
-    setIsEmailSending(true)
-    setEmailError(null)
-
-    try {
-      // Email servisini başlat
-      const emailService = new EmailService()
-      await emailService.initialize()
-
-      // Cari email adresini al (varsa)
-      let toEmail = ''
-      if (evrak.cari?.id) {
-        // Cari detayını çekerek email al
-        const cariResponse = await fetch(`/api/cariler/${evrak.cari.id}`)
-        if (cariResponse.ok) {
-          const cariResult = await cariResponse.json()
-          toEmail = cariResult.data?.email || ''
-        }
-      }
-
-      // Eğer cari email yoksa, uyarı ver ama yine de mail istemcisini aç (belki kullanıcı elle girer)
-      if (!toEmail) {
-        console.warn('Cari email bulunamadı, boş açılacak')
-      }
-
-      // Email konusu ve içeriği (Düz metin olarak, HTML mailto'da desteklenmez/zor)
-      // VB6 stili basit metin
-      const subject = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - ${evrak.evrak_no}`
-
-      const body = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri\n\n` +
-        `Evrak No: ${evrak.evrak_no}\n` +
-        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
-        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
-        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
-        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n` +
-        `Durum: ${getDurumLabel(evrak.durum)}\n\n` +
-        `Bilgilerinize sunarız.`
-
-      // Client'ı aç
-      emailService.openEmailClient(toEmail, subject, body)
-
-      setEmailSuccess('E-posta istemcisi açılıyor...')
-
-      setTimeout(() => {
-        setEmailSuccess(null)
-        setIsEmailSending(false)
-      }, 3000)
-
-    } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
-      setIsEmailSending(false)
-    }
-  }
 
   const handleCloseDurumModal = () => {
     setIsDurumModalOpen(false)
