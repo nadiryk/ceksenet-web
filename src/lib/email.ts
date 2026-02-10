@@ -435,6 +435,26 @@ export class EmailService {
 
     return text;
   }
+
+  /**
+   * Varsayılan e-posta istemcisini aç (VB6/Shell mantığı)
+   */
+  openEmailClient(to: string, subject: string, body: string): void {
+    if (!to) {
+      console.warn('E-posta adresi belirtilmedi');
+      return;
+    }
+
+    // Mailto linki oluştur
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (body) params.append('body', body);
+
+    const url = `mailto:${to}?${params.toString()}`;
+
+    // Yeni pencerede/sekmede aç
+    window.open(url, '_self');
+  }
 }
 
 // Singleton instance

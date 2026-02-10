@@ -285,7 +285,6 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
     setIsEmailSending(true)
     setEmailError(null)
-    setEmailSuccess(null)
 
     try {
       // Email servisini başlat
@@ -303,58 +302,36 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         }
       }
 
-      // Eğer cari email yoksa, ayarlardaki admin email'ine gönder
+      // Eğer cari email yoksa, uyarı ver ama yine de mail istemcisini aç (belki kullanıcı elle girer)
       if (!toEmail) {
-        try {
-          // Ayarlardan admin email al
-          const settingsResponse = await fetch('/api/settings')
-          if (settingsResponse.ok) {
-            const settingsResult = await settingsResponse.json()
-            if (settingsResult.data?.email_admin) {
-              toEmail = settingsResult.data.email_admin
-            }
-          }
-        } catch (settingsErr) {
-          console.error('Ayarlar alınamadı:', settingsErr)
-        }
-
-        // Eğer hala email yoksa hata fırlat
-        if (!toEmail) {
-          throw new Error('Alıcı e-posta adresi bulunamadı. Lütfen cari kartında veya ayarlarda (yönetici) e-posta tanımlayın.')
-        }
+        console.warn('Cari email bulunamadı, boş açılacak')
       }
 
-      // Email konusu ve içeriği
+      // Email konusu ve içeriği (Düz metin olarak, HTML mailto'da desteklenmez/zor)
+      // VB6 stili basit metin
       const subject = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - ${evrak.evrak_no}`
-      const html = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri</h2>
-          <p><strong>Evrak No:</strong> ${evrak.evrak_no}</p>
-          <p><strong>Tutar:</strong> ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}</p>
-          <p><strong>Vade Tarihi:</strong> ${formatDate(evrak.vade_tarihi)}</p>
-          <p><strong>Keşideci:</strong> ${evrak.kesideci || 'Belirtilmemiş'}</p>
-          <p><strong>Cari:</strong> ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}</p>
-          <p><strong>Durum:</strong> ${getDurumLabel(evrak.durum)}</p>
-          <hr>
-          <p>Bu email ÇekSenet Web uygulamasından otomatik gönderilmiştir.</p>
-        </div>
-      `
 
-      const result = await emailService.sendEmail({
-        to: toEmail,
-        subject,
-        html,
-        text: `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri - Evrak No: ${evrak.evrak_no}, Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}, Vade: ${formatDate(evrak.vade_tarihi)}`
-      })
+      const body = `${evrak.evrak_tipi === 'cek' ? 'Çek' : 'Senet'} Bilgileri\n\n` +
+        `Evrak No: ${evrak.evrak_no}\n` +
+        `Tutar: ${formatCurrency(evrak.tutar, evrak.para_birimi || 'TRY')}\n` +
+        `Vade Tarihi: ${formatDate(evrak.vade_tarihi)}\n` +
+        `Keşideci: ${evrak.kesideci || 'Belirtilmemiş'}\n` +
+        `Cari: ${evrak.cari?.ad_soyad || 'Belirtilmemiş'}\n` +
+        `Durum: ${getDurumLabel(evrak.durum)}\n\n` +
+        `Bilgilerinize sunarız.`
 
-      if (result.success) {
-        setEmailSuccess(result.message || 'Email başarıyla gönderildi.')
-      } else {
-        throw new Error(result.message || 'Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
-      }
+      // Client'ı aç
+      emailService.openEmailClient(toEmail, subject, body)
+
+      setEmailSuccess('E-posta istemcisi açılıyor...')
+
+      setTimeout(() => {
+        setEmailSuccess(null)
+        setIsEmailSending(false)
+      }, 3000)
+
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Email gönderilirken bir hata oluştu.')
-    } finally {
+      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
       setIsEmailSending(false)
     }
   }

@@ -342,7 +342,6 @@ export default function CariDetayPage() {
 
     setIsEmailSending(true)
     setEmailError(null)
-    setEmailSuccess(null)
 
     try {
       // Email servisini başlat
@@ -352,60 +351,37 @@ export default function CariDetayPage() {
       // Cari email adresini al (varsa)
       let toEmail = cari.email || ''
 
-      // Eğer cari email yoksa, ayarlardaki admin email'ine gönder
+      // Eğer cari email yoksa, uyarı ver ama yine de mail istemcisini aç
       if (!toEmail) {
-        try {
-          // Ayarlardan admin email al
-          const settingsResponse = await fetch('/api/settings')
-          if (settingsResponse.ok) {
-            const settingsResult = await settingsResponse.json()
-            if (settingsResult.data?.email_admin) {
-              toEmail = settingsResult.data.email_admin
-            }
-          }
-        } catch (settingsErr) {
-          console.error('Ayarlar alınamadı:', settingsErr)
-        }
-
-        // Eğer hala email yoksa hata fırlat
-        if (!toEmail) {
-          throw new Error('Alıcı e-posta adresi bulunamadı. Lütfen cari kartında veya ayarlarda (yönetici) e-posta tanımlayın.')
-        }
+        console.warn('Cari email bulunamadı, boş açılacak')
       }
 
-      // Email konusu ve içeriği
+      // Email konusu ve içeriği (Düz metin)
       const subject = `Cari Bilgileri - ${cari.ad_soyad}`
-      const html = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Cari Bilgileri</h2>
-          <p><strong>Ad Soyad:</strong> ${cari.ad_soyad}</p>
-          <p><strong>Tip:</strong> ${getCariTipLabel(cari.tip)}</p>
-          <p><strong>Telefon:</strong> ${cari.telefon || 'Belirtilmemiş'}</p>
-          <p><strong>Email:</strong> ${cari.email || 'Belirtilmemiş'}</p>
-          <p><strong>Vergi No:</strong> ${cari.vergi_no || 'Belirtilmemiş'}</p>
-          <p><strong>Adres:</strong> ${cari.adres || 'Belirtilmemiş'}</p>
-          <p><strong>Evrak Sayısı:</strong> ${cari.evrak_sayisi}</p>
-          <p><strong>Kayıt Tarihi:</strong> ${formatDateTime(cari.created_at)}</p>
-          <hr>
-          <p>Bu email ÇekSenet Web uygulamasından otomatik gönderilmiştir.</p>
-        </div>
-      `
 
-      const result = await emailService.sendEmail({
-        to: toEmail,
-        subject,
-        html,
-        text: `Cari Bilgileri - Ad Soyad: ${cari.ad_soyad}, Telefon: ${cari.telefon || 'Belirtilmemiş'}, Email: ${cari.email || 'Belirtilmemiş'}`
-      })
+      const body = `Cari Bilgileri\n\n` +
+        `Ad Soyad: ${cari.ad_soyad}\n` +
+        `Tip: ${getCariTipLabel(cari.tip)}\n` +
+        `Telefon: ${cari.telefon || 'Belirtilmemiş'}\n` +
+        `Email: ${cari.email || 'Belirtilmemiş'}\n` +
+        `Vergi No: ${cari.vergi_no || 'Belirtilmemiş'}\n` +
+        `Adres: ${cari.adres || 'Belirtilmemiş'}\n` +
+        `Evrak Sayısı: ${cari.evrak_sayisi}\n` +
+        `Kayıt Tarihi: ${formatDateTime(cari.created_at)}\n\n` +
+        `Bilgilerinize sunarız.`
 
-      if (result.success) {
-        setEmailSuccess(result.message || 'Email başarıyla gönderildi.')
-      } else {
-        throw new Error(result.message || 'Email gönderilemedi. Lütfen email ayarlarını kontrol edin.')
-      }
+      // Client'ı aç
+      emailService.openEmailClient(toEmail, subject, body)
+
+      setEmailSuccess('E-posta istemcisi açılıyor...')
+
+      setTimeout(() => {
+        setEmailSuccess(null)
+        setIsEmailSending(false)
+      }, 3000)
+
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Email gönderilirken bir hata oluştu.')
-    } finally {
+      setEmailError(err instanceof Error ? err.message : 'Bir hata oluştu.')
       setIsEmailSending(false)
     }
   }
