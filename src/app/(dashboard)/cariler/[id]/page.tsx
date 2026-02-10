@@ -344,19 +344,16 @@ export default function CariDetayPage() {
     setEmailError(null)
 
     try {
-      // Email servisini başlat
       const emailService = new EmailService()
       // initialize() gerekmez
 
-      // Cari email adresini al (varsa)
-      let toEmail = cari.email || ''
+      const toEmail = cari.email || ''
 
-      // Eğer cari email yoksa, uyarı ver ama yine de mail istemcisini aç
       if (!toEmail) {
         console.warn('Cari email bulunamadı, boş açılacak')
       }
 
-      // Email konusu ve içeriği (Düz metin)
+      // Email konusu ve içeriği 
       const subject = `Cari Bilgileri - ${cari.ad_soyad}`
 
       const body = `Cari Bilgileri\n\n` +
@@ -373,7 +370,7 @@ export default function CariDetayPage() {
       // Client'ı aç (Senkron)
       emailService.openEmailClient(toEmail, subject, body)
 
-      setEmailSuccess('E-posta istemcisi açılıyor...')
+      setEmailSuccess('Outlook açılıyor...')
 
       setTimeout(() => {
         setEmailSuccess(null)

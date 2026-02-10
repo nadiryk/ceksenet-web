@@ -53,50 +53,39 @@ export async function POST(request: NextRequest) {
 
     // SMTP yapılandırması (DB öncelikli, yoksa ENV)
     const smtpHost = settings.smtp_host || process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = parseInt(settings.smtp_port || process.env.SMTP_PORT || '587', 10);
+    let smtpPort = parseInt(settings.smtp_port || process.env.SMTP_PORT || '465', 10);
     const smtpUser = settings.smtp_user || process.env.SMTP_USER;
     const smtpPassword = settings.smtp_password || process.env.SMTP_PASSWORD;
-    const smtpSecure = settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true');
 
-    const smtpFrom = settings.email_from || process.env.EMAIL_FROM || 'noreply@ceksenet.com';
+    // VB6/CDO mantığı: Gmail için zorla 465 ve SSL kullan
+    const isGmail = smtpHost.includes('gmail');
+    if (isGmail) {
+      smtpPort = 465;
+    }
+
+    const smtpSecure = isGmail ? true : (settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true'));
+
+    // Gönderen bilgisi
+    const smtpFrom = settings.email_from || process.env.EMAIL_FROM || smtpUser || 'noreply@ceksenet.com';
     const smtpFromName = settings.email_from_name || process.env.EMAIL_FROM_NAME || 'ÇekSenet Web';
 
-    // Eğer SMTP bilgileri yoksa simülasyon modunda çalış
+    // Eğer SMTP bilgileri yoksa hata döndür (Simülasyon kafa karıştırıyor)
     if (!smtpUser || !smtpPassword) {
-      console.warn('SMTP bilgileri eksik, simülasyon modunda çalışılıyor');
-      console.log('Simülasyon e-posta:', {
-        to,
-        subject,
-        htmlLength: html.length,
-        textLength: text?.length || 0,
-      });
-
-      return successResponse({
-        success: true,
-        simulated: true,
-        message: 'E-posta simülasyon modunda işlendi (gerçek gönderim yapılmadı - SMTP ayarları eksik)',
-        timestamp: new Date().toISOString(),
-      });
+      return errorResponse('SMTP kullanıcı adı veya şifresi girilmemiş. Lütfen Ayarlar sayfasından yapılandırın.');
     }
 
     // Nodemailer transporter oluştur
-    // Nodemailer transporter oluştur
-    const isSecure = settings.smtp_secure === 'true' || (process.env.SMTP_SECURE === 'true');
-    const secureState = smtpPort === 465 ? true : (smtpPort === 587 ? false : isSecure);
-
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: secureState, // 465 için true, 587 için false, diğerleri için ayara bak
+      secure: smtpSecure, // 465 -> true
       auth: {
         user: smtpUser,
         pass: smtpPassword,
       },
       tls: {
-        // SSL hatalarını önlemek için
-        rejectUnauthorized: process.env.NODE_ENV === 'production' && !settings.smtp_secure,
-        ciphers: 'SSLv3', // Bazı sunucular için gerekebilir
-        minVersion: 'TLSv1.2'
+        // VB6'da SSL true denilmiş, burada da zorlayalım
+        rejectUnauthorized: false
       }
     });
 
@@ -125,9 +114,16 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('E-posta gönderim hatası:', error);
 
-    return serverErrorResponse(
-      error.message || 'E-posta gönderimi sırasında bir hata oluştu'
-    );
+    let errorMessage = error.message || 'E-posta gönderimi sırasında bir hata oluştu';
+
+    // Google Auth Hatası Yakalama (534-5.7.9)
+    if (errorMessage.includes('Application-specific password required') || errorMessage.includes('534')) {
+      errorMessage = 'GÜVENLİK HATASI: Google hesabınızda "Daha Az Güvenli Uygulamalar" kapalı olduğu için e-posta gönderilemiyor. Lütfen Gmail ayarlarınızdan "Uygulama Şifresi" (App Password) oluşturun ve Ayarlar sayfasında şifre alanına bu 16 haneli kodu girin. Kendi giriş şifrenizi kullanmayın.';
+    } else if (errorMessage.includes('Invalid login') || errorMessage.includes('Username and Password not accepted')) {
+      errorMessage = 'KİMLİK DOĞRULAMA HATASI: Kullanıcı adı veya şifre yanlış. Eğer Gmail kullanıyorsanız mutlaka uygulama şifresi kullanmalısınız.';
+    }
+
+    return serverErrorResponse(errorMessage);
   }
 }
 

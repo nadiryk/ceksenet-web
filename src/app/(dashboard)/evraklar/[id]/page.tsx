@@ -195,7 +195,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   }, [evrak]);
 
   // ============================================
-  // Email Gönderimi (Senkron - window.location.href için)
+  // Email Gönderimi (Client-side / Outlook)
   // ============================================
 
   const handleSendEmailMessage = () => {
@@ -206,7 +206,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
     try {
       const emailService = new EmailService()
-      // initialize() gerekmez, sadece mailto linki oluşturacağız
+      // initialize() gerekmez for mailto
 
       const toEmail = targetEmail
 
@@ -232,7 +232,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
       // Client'ı aç (Senkron çalışmalı)
       emailService.openEmailClient(toEmail, subject, body)
 
-      setEmailSuccess('E-posta istemcisi açılıyor...')
+      setEmailSuccess('Outlook açılıyor...')
 
       setTimeout(() => {
         setEmailSuccess(null)
