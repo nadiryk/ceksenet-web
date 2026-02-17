@@ -27,9 +27,11 @@ import {
   ExclamationTriangleIcon,
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/20/solid'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
+import TelegramSection from '@/components/telegram-section'
 
 // ============================================
 // Types
@@ -109,6 +111,11 @@ export default function AyarlarPage() {
 
       {/* WhatsApp Ayarları */}
       <WhatsAppSection />
+
+      <Divider />
+
+      {/* Telegram Ayarları */}
+      <TelegramSection />
 
       <Divider />
 

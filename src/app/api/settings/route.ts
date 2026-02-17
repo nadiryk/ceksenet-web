@@ -104,6 +104,10 @@ export async function PUT(request: NextRequest) {
       'smtp_secure',
       'email_from',
       'email_from_name',
+      'telegram_bot_token',
+      'telegram_chat_id',
+      'telegram_mesaj_sablonu',
+      'telegram_aktif',
     ]
 
     // Sadece izin verilen key'leri filtrele

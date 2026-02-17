@@ -41,6 +41,7 @@ import {
   CheckCircleIcon,
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/20/solid'
 import { formatCurrency, formatDate, getDurumLabel, getDurumColor, getEvrakTipiLabel } from '@/lib/utils/format'
 import EvrakFotograflar from '@/components/evrak/EvrakFotograflar'
@@ -147,6 +148,11 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   const [isEmailSending, setIsEmailSending] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
+
+  // Telegram gönderim state
+  const [isTelegramSending, setIsTelegramSending] = useState(false)
+  const [telegramError, setTelegramError] = useState<string | null>(null)
+  const [telegramSuccess, setTelegramSuccess] = useState<string | null>(null)
 
   // Email adresi state
   const [targetEmail, setTargetEmail] = useState<string>('')
@@ -393,6 +399,44 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
 
 
+  // ============================================
+  // Telegram Gönderimi
+  // ============================================
+
+  const handleSendTelegramMessage = async () => {
+    if (!evrak) return;
+
+    setIsTelegramSending(true);
+    setTelegramError(null);
+    setTelegramSuccess(null);
+
+    try {
+      const response = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evrakId: evrak.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Telegram mesajı gönderilemedi.');
+      }
+
+      setTelegramSuccess('Telegram mesajı başarıyla gönderildi.');
+
+      // Başarı mesajını kısa süre sonra temizle
+      setTimeout(() => {
+        setTelegramSuccess(null);
+        setIsTelegramSending(false);
+      }, 3000);
+
+    } catch (err) {
+      setTelegramError(err instanceof Error ? err.message : 'Telegram mesajı gönderilemedi.');
+      setIsTelegramSending(false);
+    }
+  }
+
   const handleCloseDurumModal = () => {
     setIsDurumModalOpen(false)
     setSelectedDurum('')
@@ -528,6 +572,18 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
             WhatsApp
           </Button>
           <Button
+            color="purple"
+            onClick={handleSendTelegramMessage}
+            disabled={isTelegramSending}
+          >
+            {isTelegramSending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <PaperAirplaneIcon className="h-5 w-5" />
+            )}
+            Telegram
+          </Button>
+          <Button
             color="blue"
             onClick={handleSendEmailMessage}
             disabled={isEmailSending}
@@ -546,7 +602,7 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
       {/* Hata/Başarı Mesajları */}
-      {(whatsAppError || whatsAppSuccess || emailError || emailSuccess) && (
+      {(whatsAppError || whatsAppSuccess || emailError || emailSuccess || telegramError || telegramSuccess) && (
         <div className="space-y-3">
           {whatsAppError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -577,6 +633,22 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
               <div className="flex items-center">
                 <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
                 <Text className="text-green-700">{emailSuccess}</Text>
+              </div>
+            </div>
+          )}
+          {telegramError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
+                <Text className="text-red-700">{telegramError}</Text>
+              </div>
+            </div>
+          )}
+          {telegramSuccess && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center">
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                <Text className="text-green-700">{telegramSuccess}</Text>
               </div>
             </div>
           )}
