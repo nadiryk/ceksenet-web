@@ -166,15 +166,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
       updateData.para_birimi = body.para_birimi
       
-      // Para birimi değiştiyse ve döviz kuru verilmediyse otomatik çek
-      if (body.para_birimi !== 'TRY' && !body.doviz_kuru) {
+      // TRY için döviz kuru null olmalı (sadece görüntüleme amaçlı)
+      if (body.para_birimi === 'TRY') {
+        updateData.doviz_kuru = null
+      } else if (!body.doviz_kuru) {
+        // Para birimi değiştiyse ve döviz kuru verilmediyse otomatik çek
         const kur = await getKur(body.para_birimi)
         updateData.doviz_kuru = kur
       }
     }
     
     if (body.doviz_kuru !== undefined) {
-      updateData.doviz_kuru = body.doviz_kuru
+      // TRY para birimi için döviz kuru null olmalı
+      if (body.para_birimi === 'TRY') {
+        updateData.doviz_kuru = null
+      } else {
+        updateData.doviz_kuru = body.doviz_kuru
+      }
     }
     
     if (body.evrak_tarihi !== undefined) {

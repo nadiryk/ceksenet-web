@@ -164,7 +164,10 @@ export async function POST(request: NextRequest) {
     
     // Döviz kuru - otomatik çek veya kullanıcının girdiği değeri kullan
     let dovizKuru = body.doviz_kuru || null
-    if (paraBirimi !== 'TRY' && !dovizKuru) {
+    // TRY için döviz kuru null olmalı (sadece görüntüleme amaçlı)
+    if (paraBirimi === 'TRY') {
+      dovizKuru = null
+    } else if (!dovizKuru) {
       // TCMB'den güncel kuru çek
       const kur = await getKur(paraBirimi)
       dovizKuru = kur

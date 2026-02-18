@@ -174,20 +174,18 @@ export default function EvrakEklePage() {
   // ============================================
 
   const fetchKur = async (paraBirimi: string) => {
-    if (paraBirimi === 'TRY') {
-      setFormData((prev) => ({ ...prev, doviz_kuru: 1 }))
-      return
-    }
+    // TRY için USD kurunu getir
+    const targetCurrency = paraBirimi === 'TRY' ? 'USD' : paraBirimi;
 
     // Eğer kurlar zaten yüklendiyse oradan al
-    if (dailyRates && dailyRates[paraBirimi]) {
-      setFormData((prev) => ({ ...prev, doviz_kuru: dailyRates[paraBirimi] }))
+    if (dailyRates && dailyRates[targetCurrency]) {
+      setFormData((prev) => ({ ...prev, doviz_kuru: dailyRates[targetCurrency] }))
       return
     }
 
     setIsLoadingKur(true)
     try {
-      const response = await fetch(`/api/kurlar/${paraBirimi}`)
+      const response = await fetch(`/api/kurlar/${targetCurrency}`)
       if (response.ok) {
         const result = await response.json()
         if (result.data?.kur) {
@@ -203,11 +201,7 @@ export default function EvrakEklePage() {
 
   // Para birimi değiştiğinde kuru otomatik getir
   useEffect(() => {
-    if (formData.para_birimi !== 'TRY') {
-      fetchKur(formData.para_birimi)
-    } else {
-      setFormData((prev) => ({ ...prev, doviz_kuru: 1 }))
-    }
+    fetchKur(formData.para_birimi)
   }, [formData.para_birimi])
 
   // ============================================
@@ -445,7 +439,7 @@ export default function EvrakEklePage() {
 
             {/* Döviz Kuru */}
             <Field>
-              <Label>Döviz Kuru (₺) {formData.para_birimi !== 'TRY' && '*'}</Label>
+              <Label>{formData.para_birimi === 'TRY' ? 'Dolar Kuru (₺)' : 'Döviz Kuru (₺)'} {formData.para_birimi !== 'TRY' && '*'}</Label>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Input
@@ -453,31 +447,26 @@ export default function EvrakEklePage() {
                     type="number"
                     step="0.0001"
                     min="0.0001"
-                    value={formData.para_birimi === 'TRY' ? 1 : formData.doviz_kuru || ''}
+                    value={formData.doviz_kuru || ''}
                     onChange={handleChange}
                     placeholder="0.0000"
                     invalid={!!errors.doviz_kuru}
-                    disabled={formData.para_birimi === 'TRY'}
                   />
                 </div>
-                {formData.para_birimi !== 'TRY' && (
-                  <Button
-                    type="button"
-                    outline
-                    onClick={() => fetchKur(formData.para_birimi)}
-                    disabled={isLoadingKur}
-                    title="TCMB'den güncel kuru al"
-                  >
-                    <ArrowPathIcon className={`h-5 w-5 ${isLoadingKur ? 'animate-spin' : ''}`} />
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  outline
+                  onClick={() => fetchKur(formData.para_birimi)}
+                  disabled={isLoadingKur}
+                  title={formData.para_birimi === 'TRY' ? "TCMB'den güncel dolar kuru al" : "TCMB'den güncel kuru al"}
+                >
+                  <ArrowPathIcon className={`h-5 w-5 ${isLoadingKur ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
               {errors.doviz_kuru && <ErrorMessage>{errors.doviz_kuru}</ErrorMessage>}
-              {formData.para_birimi === 'TRY' ? (
-                <Description>TRY için döviz kuru 1'dir</Description>
-              ) : formData.doviz_kuru ? (
+              {formData.doviz_kuru ? (
                 <Description>
-                  1 {formData.para_birimi} ={' '}
+                  {formData.para_birimi === 'TRY' ? '1 USD =' : `1 ${formData.para_birimi} =`}{' '}
                   {formData.doviz_kuru.toLocaleString('tr-TR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 4,
