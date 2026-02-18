@@ -420,14 +420,7 @@ export default function KrediDetayPage() {
       }
 
       // Mesaj şablonu oluştur
-      const message = `*Kredi Bilgileri*\n` +
-        `Banka: ${kredi.banka?.ad || 'Belirtilmemiş'}\n` +
-        `Kredi Türü: ${KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu}\n` +
-        `Anapara: ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n` +
-        `Toplam Ödeme: ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}\n` +
-        `Kalan Borç: ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}\n` +
-        `Geciken Taksit: ${kredi.ozet.geciken_taksit} adet\n` +
-        `Durum: ${getKrediDurumLabel(kredi.durum)}`
+      const message = generateKrediOzetMessage(kredi)
 
       // WhatsApp Web'i aç
       whatsappService.openWhatsAppWeb(targetPhone, message)
@@ -457,14 +450,7 @@ export default function KrediDetayPage() {
 
     try {
       // Mesaj içeriği
-      const message = `*Kredi Bilgileri*\n` +
-        `Banka: ${kredi.banka?.ad || 'Belirtilmemiş'}\n` +
-        `Kredi Türü: ${KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu}\n` +
-        `Anapara: ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n` +
-        `Toplam Ödeme: ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}\n` +
-        `Kalan Borç: ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}\n` +
-        `Geciken Taksit: ${kredi.ozet.geciken_taksit} adet\n` +
-        `Durum: ${getKrediDurumLabel(kredi.durum)}`
+      const message = generateKrediOzetMessage(kredi)
 
       const response = await fetch('/api/telegram/send', {
         method: 'POST',
@@ -603,6 +589,31 @@ export default function KrediDetayPage() {
     const tarih = new Date(baslangic)
     tarih.setMonth(tarih.getMonth() + vadeAy)
     return tarih.toISOString().split('T')[0]
+  }
+
+  const generateKrediOzetMessage = (kredi: KrediDetay): string => {
+    const bitisTarihi = getBitisTarihi(kredi.baslangic_tarihi, kredi.vade_ay)
+    const toplamFaiz = kredi.toplam_odeme - kredi.anapara
+    const durumLabel = getKrediDurumLabel(kredi.durum)
+    const turLabel = KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu
+    
+    const message =
+      `${kredi.banka?.ad || 'Banka Belirtilmemiş'}\n` +
+      `${durumLabel}\n` +
+      `${turLabel} • ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n\n` +
+      `Anapara ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n\n` +
+      `Toplam Ödeme ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}\n\n` +
+      `Kalan Borç ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}\n\n` +
+      `Ödenen Tutar ${formatCurrency(kredi.ozet.odenen_tutar, kredi.para_birimi)}\n\n` +
+      `Kredi Özeti\n` +
+      `Faiz Oranı %${kredi.faiz_orani.toFixed(2)}\n\n` +
+      `Vade ${kredi.vade_ay} ay\n\n` +
+      `Aylık Taksit ${formatCurrency(kredi.aylik_taksit, kredi.para_birimi)}\n\n` +
+      `Başlangıç ${formatDate(kredi.baslangic_tarihi)}\n\n` +
+      `Bitiş (Tahmini) ${formatDate(bitisTarihi)}\n\n` +
+      `Toplam Faiz ${formatCurrency(toplamFaiz, kredi.para_birimi)}`
+    
+    return message
   }
 
   // ============================================
