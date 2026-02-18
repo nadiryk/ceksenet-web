@@ -22,25 +22,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { evrakId, chatId, customMessage } = body;
 
-    if (!evrakId) {
+    // Eğer özel mesaj yoksa evrak ID zorunludur
+    if (!evrakId && !customMessage) {
       return errorResponse('Evrak ID gereklidir.');
     }
 
     const supabase = await createClient();
 
-    // Evrak bilgilerini getir
-    const { data: evrak, error: evrakError } = await supabase
-      .from('evraklar')
-      .select(`
-        *,
-        cari:cariler(id, ad_soyad, tip, telefon, email),
-        banka:bankalar(id, ad)
-      `)
-      .eq('id', evrakId)
-      .single();
+    let evrak = null;
 
-    if (evrakError || !evrak) {
-      return errorResponse('Evrak bulunamadı.', 404);
+    // Evrak ID varsa bilgilerini getir
+    if (evrakId) {
+      const { data, error: evrakError } = await supabase
+        .from('evraklar')
+        .select(`
+          *,
+          cari:cariler(id, ad_soyad, tip, telefon, email),
+          banka:bankalar(id, ad)
+        `)
+        .eq('id', evrakId)
+        .single();
+
+      if (evrakError || !data) {
+        return errorResponse('Evrak bulunamadı.', 404);
+      }
+      evrak = data;
     }
 
     // Telegram servisini başlat

@@ -404,10 +404,13 @@ export default function KrediDetayPage() {
       // WhatsApp servisini başlat
       await whatsappService.initialize()
 
-      // Ayarlardan telefon numarası al
+      // Ayarlardan telefon numarasını al (Server-side yerine client-side mantığı kullanacağız)
+      // Ancak numarayı almak için yine service kullanabiliriz.
       const numbers = await whatsappService.getWhatsAppNumbers()
-      if (numbers.length === 0) {
-        throw new Error('WhatsApp gönderimi için telefon numarası ayarlanmamış. Lütfen ayarlar sayfasından bir telefon numarası girin.')
+      const targetPhone = numbers.length > 0 ? numbers[0] : ''
+
+      if (!targetPhone) {
+        throw new Error('Ayarlarda kayıtlı WhatsApp numarası bulunamadı.')
       }
 
       // Mesaj şablonu oluştur
@@ -420,20 +423,17 @@ export default function KrediDetayPage() {
         `Geciken Taksit: ${kredi.ozet.geciken_taksit} adet\n` +
         `Durum: ${getKrediDurumLabel(kredi.durum)}`
 
-      // İlk telefon numarasına gönder
-      const success = await whatsappService.sendSingleMessage({
-        telefon: numbers[0],
-        mesaj: message
-      })
+      // WhatsApp Web'i aç
+      whatsappService.openWhatsAppWeb(targetPhone, message)
 
-      if (success) {
-        setWhatsAppSuccess('WhatsApp mesajı başarıyla gönderildi.')
-      } else {
-        throw new Error('WhatsApp mesajı gönderilemedi. Lütfen ayarları kontrol edin.')
-      }
+      setWhatsAppSuccess('WhatsApp Web açılıyor...')
+      setTimeout(() => {
+        setWhatsAppSuccess(null)
+        setIsWhatsAppSending(false)
+      }, 3000)
+
     } catch (err) {
-      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp mesajı gönderilirken bir hata oluştu.')
-    } finally {
+      setWhatsAppError(err instanceof Error ? err.message : 'WhatsApp başlatılırken bir hata oluştu.')
       setIsWhatsAppSending(false)
     }
   }

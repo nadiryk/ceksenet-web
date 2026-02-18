@@ -43,6 +43,7 @@ import {
   MapPinIcon,
   IdentificationIcon,
   ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/20/solid'
 import {
   formatCurrency,
@@ -137,6 +138,11 @@ export default function CariDetayPage() {
   const [isEmailSending, setIsEmailSending] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
+
+  // Telegram gönderim state
+  const [isTelegramSending, setIsTelegramSending] = useState(false)
+  const [telegramError, setTelegramError] = useState<string | null>(null)
+  const [telegramSuccess, setTelegramSuccess] = useState<string | null>(null)
 
   // ============================================
   // Data Fetching
@@ -415,6 +421,55 @@ export default function CariDetayPage() {
   }
 
   // ============================================
+  // Telegram Gönderimi
+  // ============================================
+
+  const handleSendTelegramMessage = async () => {
+    if (!cari) return
+
+    setIsTelegramSending(true)
+    setTelegramError(null)
+    setTelegramSuccess(null)
+
+    try {
+      // Mesaj içeriği
+      const message = `*Cari Bilgileri*\n\n` +
+        `*Ad Soyad:* ${cari.ad_soyad}\n` +
+        `*Tip:* ${getCariTipLabel(cari.tip)}\n` +
+        `*Telefon:* ${cari.telefon || '-'}\n` +
+        `*E-posta:* ${cari.email || '-'}\n\n` +
+        `*Bakiye Durumu*\n` +
+        `Toplam Tutar: ${formatCurrency(stats.toplam_tutar)}\n` +
+        `Portföy: ${formatCurrency(stats.portfoy_tutar)}\n` +
+        `Tahsil: ${formatCurrency(stats.tahsil_tutar)}`
+
+      const response = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customMessage: message,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Telegram mesajı gönderilemedi.')
+      }
+
+      setTelegramSuccess('Telegram mesajı başarıyla gönderildi.')
+      setTimeout(() => {
+        setTelegramSuccess(null)
+        setIsTelegramSending(false)
+      }, 3000)
+
+    } catch (err) {
+      setTelegramError(err instanceof Error ? err.message : 'Telegram mesajı gönderilemedi.')
+      setIsTelegramSending(false)
+    }
+  }
+
+  // ============================================
   // Render - Loading
   // ============================================
 
@@ -487,6 +542,19 @@ export default function CariDetayPage() {
               <ChatBubbleLeftRightIcon className="h-6 w-6" />
             )}
             WhatsApp ile Paylaş
+          </Button>
+          <Button
+            color="purple"
+            onClick={handleSendTelegramMessage}
+            disabled={isTelegramSending}
+            className="shadow-md hover:shadow-lg transition-shadow"
+          >
+            {isTelegramSending ? (
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
+            ) : (
+              <PaperAirplaneIcon className="h-6 w-6" />
+            )}
+            Telegram
           </Button>
           <Button
             color="blue"

@@ -139,6 +139,27 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
   const [isDurumUpdating, setIsDurumUpdating] = useState(false)
   const [durumError, setDurumError] = useState<string | null>(null)
 
+  // Günlük kurlar state
+  const [dailyRates, setDailyRates] = useState<{ USD: number | null; EUR: number | null } | null>(null)
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const response = await fetch('/api/kurlar')
+        if (response.ok) {
+          const result = await response.json()
+          setDailyRates({
+            USD: result.data.USD,
+            EUR: result.data.EUR
+          })
+        }
+      } catch (e) {
+        console.error('Kurlar yüklenemedi:', e)
+      }
+    }
+    fetchRates()
+  }, [])
+
   // WhatsApp gönderim state
   const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
   const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
@@ -657,9 +678,31 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
 
       {/* Evrak Bilgileri */}
       <div className="rounded-lg border border-zinc-200 bg-white p-6">
-        <Heading level={2} className="text-lg">
-          Evrak Bilgileri
-        </Heading>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <Heading level={2} className="text-lg">
+            Evrak Bilgileri
+          </Heading>
+
+          {/* Günlük Kurlar */}
+          <div className="flex items-center gap-3 text-sm bg-zinc-50 px-3 py-1.5 rounded-md border border-zinc-100">
+            <span className="font-medium text-zinc-500">Günlük Kurlar:</span>
+            {dailyRates ? (
+              <div className="flex items-center gap-4">
+                <span className="flex items-center text-green-700">
+                  <span className="font-semibold mr-1">USD:</span>
+                  {dailyRates.USD?.toFixed(4)} ₺
+                </span>
+                <span className="w-px h-4 bg-zinc-300"></span>
+                <span className="flex items-center text-blue-700">
+                  <span className="font-semibold mr-1">EUR:</span>
+                  {dailyRates.EUR?.toFixed(4)} ₺
+                </span>
+              </div>
+            ) : (
+              <span className="text-zinc-400 italic">Yükleniyor...</span>
+            )}
+          </div>
+        </div>
         <Divider className="my-4" />
 
         <DescriptionList>

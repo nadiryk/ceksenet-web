@@ -352,21 +352,17 @@ export default function RaporlarPage() {
         `Çek: ${ozet.cek.adet} Adet - ${formatCurrency(ozet.cek.tutar)}\n` +
         `Senet: ${ozet.senet.adet} Adet - ${formatCurrency(ozet.senet.tutar)}`
 
-      // İlk telefon numarasına gönder
-      const result = await whatsappService.sendSingleMessage({
-        telefon: numbers[0],
-        mesaj: message
-      })
+      // WhatsApp Web'i aç
+      whatsappService.openWhatsAppWeb(numbers[0], message)
 
-      if (result) {
-        setSuccess('Rapor özeti WhatsApp ile gönderildi.')
-        setTimeout(() => setSuccess(null), 3000)
-      } else {
-        throw new Error('WhatsApp mesajı gönderilemedi.')
-      }
+      setSuccess('WhatsApp Web açılıyor...')
+      setTimeout(() => {
+        setSuccess(null)
+        setIsWhatsAppSending(false)
+      }, 3000)
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'WhatsApp gönderim hatası')
-    } finally {
+      setError(err instanceof Error ? err.message : 'WhatsApp başlatılırken hata oluştu')
       setIsWhatsAppSending(false)
     }
   }
