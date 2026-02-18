@@ -34,32 +34,32 @@ export interface KurlarResponse {
  */
 function parseTCMBXml(xml: string): { tarih: string; kurlar: Record<string, number> } {
   const kurlar: Record<string, number> = {}
-  
+
   // Tarihi çek: <Tarih_Date Tarih="31.12.2025" ...>
   const tarihMatch = xml.match(/Tarih="([^"]+)"/)
   const tarih = tarihMatch ? tarihMatch[1] : new Date().toLocaleDateString('tr-TR')
-  
+
   // Her Currency bloğunu bul
   const currencyBlocks = xml.match(/<Currency[^>]*>[\s\S]*?<\/Currency>/g) || []
-  
+
   for (const block of currencyBlocks) {
     // Kod: <Currency ... Kod="USD" ...>
     const kodMatch = block.match(/Kod="([^"]+)"/)
     if (!kodMatch) continue
-    
+
     const kod = kodMatch[1]
     if (!SUPPORTED_CURRENCIES.includes(kod as typeof SUPPORTED_CURRENCIES[number])) continue
-    
+
     // ForexBuying değeri: <ForexBuying>35.1234</ForexBuying>
     const forexMatch = block.match(/<ForexBuying>([^<]+)<\/ForexBuying>/)
     if (!forexMatch || forexMatch[1] === '') continue
-    
+
     const kur = parseFloat(forexMatch[1].replace(',', '.'))
     if (!isNaN(kur) && kur > 0) {
       kurlar[kod] = kur
     }
   }
-  
+
   return { tarih, kurlar }
 }
 
@@ -69,25 +69,22 @@ function parseTCMBXml(xml: string): { tarih: string; kurlar: Record<string, numb
 async function fetchFromTCMB(): Promise<{ tarih: string; kurlar: Record<string, number> }> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 saniye timeout
-  
+
   try {
     const response = await fetch(TCMB_URL, {
       signal: controller.signal,
-      headers: {
-        'User-Agent': 'CekSenet/1.0',
-        'Accept': 'application/xml'
-      }
+      cache: 'no-store'
     })
-    
+
     clearTimeout(timeoutId)
-    
+
     if (!response.ok) {
       throw new Error(`TCMB HTTP error: ${response.status}`)
     }
-    
+
     const xmlData = await response.text()
     return parseTCMBXml(xmlData)
-    
+
   } catch (error) {
     clearTimeout(timeoutId)
     if (error instanceof Error && error.name === 'AbortError') {
@@ -103,7 +100,7 @@ async function fetchFromTCMB(): Promise<{ tarih: string; kurlar: Record<string, 
  */
 function formatDateForDB(tarih: string): string {
   if (tarih.includes('-')) return tarih // Zaten doğru format
-  
+
   const parts = tarih.split('.')
   if (parts.length === 3) {
     return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
@@ -124,7 +121,7 @@ function getTodayDate(): string {
 export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
   const supabase = await createClient()
   const today = getTodayDate()
-  
+
   // Önce Supabase'den bugünün verisine bak
   if (!forceRefresh) {
     const { data: cachedKur } = await supabase
@@ -132,7 +129,7 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
       .select('*')
       .eq('tarih', today)
       .single()
-    
+
     if (cachedKur) {
       return {
         kurlar: {
@@ -148,12 +145,12 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
       }
     }
   }
-  
+
   // TCMB'den çekmeyi dene
   try {
     const { tarih, kurlar } = await fetchFromTCMB()
     const dbTarih = formatDateForDB(tarih)
-    
+
     // Supabase'e kaydet (upsert - varsa güncelle, yoksa ekle)
     const { error: upsertError } = await supabase
       .from('doviz_kurlari')
@@ -164,11 +161,11 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
         gbp: kurlar.GBP || null,
         chf: kurlar.CHF || null
       }, { onConflict: 'tarih' })
-    
+
     if (upsertError) {
       console.error('Döviz kuru kaydetme hatası:', upsertError)
     }
-    
+
     return {
       kurlar: {
         TRY: 1,
@@ -181,10 +178,10 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
       cached: false,
       updated_at: new Date().toISOString()
     }
-    
+
   } catch (error) {
     console.error('TCMB kur çekme hatası:', error)
-    
+
     // Hata durumunda en son kaydedilen veriyi kullan
     const { data: lastKur } = await supabase
       .from('doviz_kurlari')
@@ -192,7 +189,7 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
       .order('tarih', { ascending: false })
       .limit(1)
       .single()
-    
+
     if (lastKur) {
       return {
         kurlar: {
@@ -209,7 +206,7 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
         error: 'TCMB erişilemedi, eski veriler gösteriliyor'
       }
     }
-    
+
     // Hiç veri yoksa
     return {
       kurlar: {
@@ -233,7 +230,7 @@ export async function getKurlar(forceRefresh = false): Promise<KurlarResponse> {
  */
 export async function getKur(paraBirimi: SupportedCurrency): Promise<number | null> {
   if (paraBirimi === 'TRY') return 1
-  
+
   const result = await getKurlar()
   return result.kurlar[paraBirimi] || null
 }
@@ -247,14 +244,14 @@ export async function getCacheStatus(): Promise<{
   lastTarih: string | null
 }> {
   const supabase = await createClient()
-  
+
   const { data } = await supabase
     .from('doviz_kurlari')
     .select('tarih, created_at')
     .order('tarih', { ascending: false })
     .limit(1)
     .single()
-  
+
   return {
     hasData: !!data,
     lastUpdate: data?.created_at || null,
