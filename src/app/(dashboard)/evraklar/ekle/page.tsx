@@ -91,7 +91,7 @@ export default function EvrakEklePage() {
     evrak_no: '',
     tutar: '',
     para_birimi: 'TRY',
-    doviz_kuru: null,
+    doviz_kuru: 1,
     evrak_tarihi: '',
     vade_tarihi: '',
     banka_id: null,
@@ -175,7 +175,7 @@ export default function EvrakEklePage() {
 
   const fetchKur = async (paraBirimi: string) => {
     if (paraBirimi === 'TRY') {
-      setFormData((prev) => ({ ...prev, doviz_kuru: null }))
+      setFormData((prev) => ({ ...prev, doviz_kuru: 1 }))
       return
     }
 
@@ -206,7 +206,7 @@ export default function EvrakEklePage() {
     if (formData.para_birimi !== 'TRY') {
       fetchKur(formData.para_birimi)
     } else {
-      setFormData((prev) => ({ ...prev, doviz_kuru: null }))
+      setFormData((prev) => ({ ...prev, doviz_kuru: 1 }))
     }
   }, [formData.para_birimi])
 
@@ -313,7 +313,6 @@ export default function EvrakEklePage() {
   // Render
   // ============================================
 
-  const isDoviz = formData.para_birimi !== 'TRY'
   const paraBirimiSembol = formData.para_birimi === 'USD' ? '$' : formData.para_birimi === 'EUR' ? '€' : formData.para_birimi === 'GBP' ? '£' : '₺'
 
   return (
@@ -444,23 +443,24 @@ export default function EvrakEklePage() {
               </Field>
             </div>
 
-            {/* Döviz Kuru (sadece döviz seçiliyse) */}
-            {isDoviz && (
-              <Field>
-                <Label>Döviz Kuru (₺) *</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      name="doviz_kuru"
-                      type="number"
-                      step="0.0001"
-                      min="0.0001"
-                      value={formData.doviz_kuru || ''}
-                      onChange={handleChange}
-                      placeholder="0.0000"
-                      invalid={!!errors.doviz_kuru}
-                    />
-                  </div>
+            {/* Döviz Kuru */}
+            <Field>
+              <Label>Döviz Kuru (₺) {formData.para_birimi !== 'TRY' && '*'}</Label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    name="doviz_kuru"
+                    type="number"
+                    step="0.0001"
+                    min="0.0001"
+                    value={formData.para_birimi === 'TRY' ? 1 : formData.doviz_kuru || ''}
+                    onChange={handleChange}
+                    placeholder="0.0000"
+                    invalid={!!errors.doviz_kuru}
+                    disabled={formData.para_birimi === 'TRY'}
+                  />
+                </div>
+                {formData.para_birimi !== 'TRY' && (
                   <Button
                     type="button"
                     outline
@@ -470,20 +470,22 @@ export default function EvrakEklePage() {
                   >
                     <ArrowPathIcon className={`h-5 w-5 ${isLoadingKur ? 'animate-spin' : ''}`} />
                   </Button>
-                </div>
-                {errors.doviz_kuru && <ErrorMessage>{errors.doviz_kuru}</ErrorMessage>}
-                {formData.doviz_kuru && (
-                  <Description>
-                    1 {formData.para_birimi} ={' '}
-                    {formData.doviz_kuru.toLocaleString('tr-TR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    })}{' '}
-                    ₺
-                  </Description>
                 )}
-              </Field>
-            )}
+              </div>
+              {errors.doviz_kuru && <ErrorMessage>{errors.doviz_kuru}</ErrorMessage>}
+              {formData.para_birimi === 'TRY' ? (
+                <Description>TRY için döviz kuru 1'dir</Description>
+              ) : formData.doviz_kuru ? (
+                <Description>
+                  1 {formData.para_birimi} ={' '}
+                  {formData.doviz_kuru.toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4,
+                  })}{' '}
+                  ₺
+                </Description>
+              ) : null}
+            </Field>
 
             {/* Evrak Tarihi & Vade Tarihi */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

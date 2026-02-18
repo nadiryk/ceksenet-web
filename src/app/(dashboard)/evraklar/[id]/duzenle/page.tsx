@@ -171,7 +171,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
           evrak_no: evrak.evrak_no,
           tutar: evrak.tutar.toString(),
           para_birimi: evrak.para_birimi || 'TRY',
-          doviz_kuru: evrak.doviz_kuru,
+          doviz_kuru: evrak.doviz_kuru || (evrak.para_birimi === 'TRY' ? 1 : null),
           evrak_tarihi: evrak.evrak_tarihi || '',
           vade_tarihi: evrak.vade_tarihi,
           banka_id: evrak.banka_id,
@@ -237,7 +237,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
 
   const fetchKur = async (paraBirimi: string) => {
     if (paraBirimi === 'TRY') {
-      setFormData((prev) => ({ ...prev, doviz_kuru: null }))
+      setFormData((prev) => ({ ...prev, doviz_kuru: 1 }))
       return
     }
 
@@ -329,7 +329,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
       setFormData((prev) => ({
         ...prev,
         para_birimi: value,
-        doviz_kuru: value === 'TRY' ? null : prev.doviz_kuru,
+        doviz_kuru: value === 'TRY' ? 1 : prev.doviz_kuru,
       }))
       // Yeni para birimi için kur getir
       if (value !== 'TRY') {
@@ -414,7 +414,6 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
   // Render
   // ============================================
 
-  const isDoviz = formData.para_birimi !== 'TRY'
   const paraBirimiSembol =
     formData.para_birimi === 'USD'
       ? '$'
@@ -517,23 +516,24 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
               </Field>
             </div>
 
-            {/* Döviz Kuru (sadece döviz seçiliyse) */}
-            {isDoviz && (
-              <Field>
-                <Label>Döviz Kuru (₺) *</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      name="doviz_kuru"
-                      type="number"
-                      step="0.0001"
-                      min="0.0001"
-                      value={formData.doviz_kuru || ''}
-                      onChange={handleChange}
-                      placeholder="0.0000"
-                      invalid={!!errors.doviz_kuru}
-                    />
-                  </div>
+            {/* Döviz Kuru */}
+            <Field>
+              <Label>Döviz Kuru (₺) {formData.para_birimi !== 'TRY' && '*'}</Label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    name="doviz_kuru"
+                    type="number"
+                    step="0.0001"
+                    min="0.0001"
+                    value={formData.para_birimi === 'TRY' ? 1 : formData.doviz_kuru || ''}
+                    onChange={handleChange}
+                    placeholder="0.0000"
+                    invalid={!!errors.doviz_kuru}
+                    disabled={formData.para_birimi === 'TRY'}
+                  />
+                </div>
+                {formData.para_birimi !== 'TRY' && (
                   <Button
                     type="button"
                     outline
@@ -543,20 +543,22 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
                   >
                     <ArrowPathIcon className={`h-5 w-5 ${isLoadingKur ? 'animate-spin' : ''}`} />
                   </Button>
-                </div>
-                {errors.doviz_kuru && <ErrorMessage>{errors.doviz_kuru}</ErrorMessage>}
-                {formData.doviz_kuru && !errors.doviz_kuru && (
-                  <Description>
-                    1 {formData.para_birimi} ={' '}
-                    {formData.doviz_kuru.toLocaleString('tr-TR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    })}{' '}
-                    ₺
-                  </Description>
                 )}
-              </Field>
-            )}
+              </div>
+              {errors.doviz_kuru && <ErrorMessage>{errors.doviz_kuru}</ErrorMessage>}
+              {formData.para_birimi === 'TRY' ? (
+                <Description>TRY için döviz kuru 1'dir</Description>
+              ) : formData.doviz_kuru ? (
+                <Description>
+                  1 {formData.para_birimi} ={' '}
+                  {formData.doviz_kuru.toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4,
+                  })}{' '}
+                  ₺
+                </Description>
+              ) : null}
+            </Field>
 
             {/* Evrak Tarihi & Vade Tarihi */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
