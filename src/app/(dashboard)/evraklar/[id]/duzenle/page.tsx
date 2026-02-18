@@ -136,6 +136,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
   const [isLoadingCariler, setIsLoadingCariler] = useState(true)
   const [isLoadingBankalar, setIsLoadingBankalar] = useState(true)
   const [isLoadingKur, setIsLoadingKur] = useState(false)
+  const [dailyRates, setDailyRates] = useState<Record<string, number> | null>(null)
 
   // ============================================
   // Load Evrak Data
@@ -171,7 +172,7 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
           evrak_no: evrak.evrak_no,
           tutar: evrak.tutar.toString(),
           para_birimi: evrak.para_birimi || 'TRY',
-          doviz_kuru: evrak.doviz_kuru || (evrak.para_birimi === 'TRY' ? 1 : null),
+          doviz_kuru: evrak.doviz_kuru || null,
           evrak_tarihi: evrak.evrak_tarihi || '',
           vade_tarihi: evrak.vade_tarihi,
           banka_id: evrak.banka_id,
@@ -232,12 +233,37 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
   }, [])
 
   // ============================================
+  // Load Daily Rates
+  // ============================================
+
+  useEffect(() => {
+    async function loadRates() {
+      try {
+        const response = await fetch('/api/kurlar')
+        if (response.ok) {
+          const result = await response.json()
+          setDailyRates(result.data?.kurlar || null)
+        }
+      } catch (err) {
+        console.error('Kurlar yüklenemedi:', err)
+      }
+    }
+    loadRates()
+  }, [])
+
+  // ============================================
   // Kur İşlemleri
   // ============================================
 
   const fetchKur = async (paraBirimi: string) => {
     // TRY için USD kurunu getir
     const targetCurrency = paraBirimi === 'TRY' ? 'USD' : paraBirimi;
+
+    // Eğer kurlar zaten yüklendiyse oradan al
+    if (dailyRates && dailyRates[targetCurrency]) {
+      setFormData((prev) => ({ ...prev, doviz_kuru: dailyRates[targetCurrency] }))
+      return
+    }
 
     setIsLoadingKur(true)
     try {
@@ -254,6 +280,13 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
       setIsLoadingKur(false)
     }
   }
+
+  // Otomatik kur yükle
+  useEffect(() => {
+    if (formData.para_birimi && !formData.doviz_kuru) {
+      fetchKur(formData.para_birimi)
+    }
+  }, [formData.para_birimi, formData.doviz_kuru])
 
   // ============================================
   // Validation
@@ -438,6 +471,41 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
+      {/* Günlük Kurlar Banner */}
+      <div className="mb-6 flex items-center gap-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-900 border border-blue-100">
+        <span className="font-semibold text-blue-700">Günün Kurları:</span>
+        {!dailyRates ? (
+          <span className="text-blue-600">Kurlar yükleniyor...</span>
+        ) : (
+          <>
+            {dailyRates.USD && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">USD:</span>
+                <span>{dailyRates.USD.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {dailyRates.EUR && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">EUR:</span>
+                <span>{dailyRates.EUR.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {dailyRates.GBP && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">GBP:</span>
+                <span>{dailyRates.GBP.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {!dailyRates.USD && !dailyRates.EUR && !dailyRates.GBP && (
+              <span className="text-blue-600">Kurlar alınamadı</span>
+            )}
+          </>
+        )}
+        <span className="ml-auto text-xs text-blue-500 hidden sm:inline">
+          Otomatik olarak formda kullanılır
+        </span>
+      </div>
+
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* General Error */}
@@ -493,7 +561,6 @@ export default function EvrakDuzenlePage({ params }: { params: Promise<{ id: str
                     </option>
                   ))}
                 </Select>
-                <Description>Varsayılan: Türk Lirası</Description>
               </Field>
 
               <Field>

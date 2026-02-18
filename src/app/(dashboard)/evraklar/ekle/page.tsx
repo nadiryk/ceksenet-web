@@ -91,7 +91,7 @@ export default function EvrakEklePage() {
     evrak_no: '',
     tutar: '',
     para_birimi: 'TRY',
-    doviz_kuru: 1,
+    doviz_kuru: null,
     evrak_tarihi: '',
     vade_tarihi: '',
     banka_id: null,
@@ -418,7 +418,6 @@ export default function EvrakEklePage() {
                     </option>
                   ))}
                 </Select>
-                <Description>Varsayılan: Türk Lirası</Description>
               </Field>
 
               <Field>
