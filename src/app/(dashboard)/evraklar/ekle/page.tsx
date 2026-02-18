@@ -149,12 +149,39 @@ export default function EvrakEklePage() {
   }, [])
 
   // ============================================
+  // Günlük Kurları Getir
+  // ============================================
+
+  const [dailyRates, setDailyRates] = useState<Record<string, number> | null>(null)
+
+  useEffect(() => {
+    async function loadRates() {
+      try {
+        const response = await fetch('/api/kurlar')
+        if (response.ok) {
+          const result = await response.json()
+          setDailyRates(result.data || null)
+        }
+      } catch (err) {
+        console.error('Kurlar yüklenemedi:', err)
+      }
+    }
+    loadRates()
+  }, [])
+
+  // ============================================
   // Kur İşlemleri
   // ============================================
 
   const fetchKur = async (paraBirimi: string) => {
     if (paraBirimi === 'TRY') {
       setFormData((prev) => ({ ...prev, doviz_kuru: null }))
+      return
+    }
+
+    // Eğer kurlar zaten yüklendiyse oradan al
+    if (dailyRates && dailyRates[paraBirimi]) {
+      setFormData((prev) => ({ ...prev, doviz_kuru: dailyRates[paraBirimi] }))
       return
     }
 
@@ -307,6 +334,34 @@ export default function EvrakEklePage() {
           </div>
         </div>
       </div>
+
+      {/* Günlük Kurlar Banner */}
+      {dailyRates && (
+        <div className="mb-6 flex items-center gap-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-900 border border-blue-100">
+          <span className="font-semibold text-blue-700">Günün Kurları:</span>
+          {dailyRates.USD && (
+            <div className="flex items-center gap-1">
+              <span className="font-medium">USD:</span>
+              <span>{dailyRates.USD.toFixed(4)} ₺</span>
+            </div>
+          )}
+          {dailyRates.EUR && (
+            <div className="flex items-center gap-1">
+              <span className="font-medium">EUR:</span>
+              <span>{dailyRates.EUR.toFixed(4)} ₺</span>
+            </div>
+          )}
+          {dailyRates.GBP && (
+            <div className="flex items-center gap-1">
+              <span className="font-medium">GBP:</span>
+              <span>{dailyRates.GBP.toFixed(4)} ₺</span>
+            </div>
+          )}
+          <span className="ml-auto text-xs text-blue-500 hidden sm:inline">
+            Otomatik olarak formda kullanılır
+          </span>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
