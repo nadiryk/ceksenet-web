@@ -149,8 +149,8 @@ export default function EvrakDetayPage({ params }: { params: Promise<{ id: strin
         if (response.ok) {
           const result = await response.json()
           setDailyRates({
-            USD: result.data.USD,
-            EUR: result.data.EUR
+            USD: result.data?.kurlar?.USD || null,
+            EUR: result.data?.kurlar?.EUR || null
           })
         }
       } catch (e) {

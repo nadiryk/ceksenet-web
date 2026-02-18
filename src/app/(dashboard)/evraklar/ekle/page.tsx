@@ -160,7 +160,7 @@ export default function EvrakEklePage() {
         const response = await fetch('/api/kurlar')
         if (response.ok) {
           const result = await response.json()
-          setDailyRates(result.data || null)
+          setDailyRates(result.data?.kurlar || null)
         }
       } catch (err) {
         console.error('Kurlar yüklenemedi:', err)
@@ -336,32 +336,39 @@ export default function EvrakEklePage() {
       </div>
 
       {/* Günlük Kurlar Banner */}
-      {dailyRates && (
-        <div className="mb-6 flex items-center gap-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-900 border border-blue-100">
-          <span className="font-semibold text-blue-700">Günün Kurları:</span>
-          {dailyRates.USD && (
-            <div className="flex items-center gap-1">
-              <span className="font-medium">USD:</span>
-              <span>{dailyRates.USD.toFixed(4)} ₺</span>
-            </div>
-          )}
-          {dailyRates.EUR && (
-            <div className="flex items-center gap-1">
-              <span className="font-medium">EUR:</span>
-              <span>{dailyRates.EUR.toFixed(4)} ₺</span>
-            </div>
-          )}
-          {dailyRates.GBP && (
-            <div className="flex items-center gap-1">
-              <span className="font-medium">GBP:</span>
-              <span>{dailyRates.GBP.toFixed(4)} ₺</span>
-            </div>
-          )}
-          <span className="ml-auto text-xs text-blue-500 hidden sm:inline">
-            Otomatik olarak formda kullanılır
-          </span>
-        </div>
-      )}
+      <div className="mb-6 flex items-center gap-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-900 border border-blue-100">
+        <span className="font-semibold text-blue-700">Günün Kurları:</span>
+        {!dailyRates ? (
+          <span className="text-blue-600">Kurlar yükleniyor...</span>
+        ) : (
+          <>
+            {dailyRates.USD && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">USD:</span>
+                <span>{dailyRates.USD.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {dailyRates.EUR && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">EUR:</span>
+                <span>{dailyRates.EUR.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {dailyRates.GBP && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium">GBP:</span>
+                <span>{dailyRates.GBP.toFixed(4)} ₺</span>
+              </div>
+            )}
+            {!dailyRates.USD && !dailyRates.EUR && !dailyRates.GBP && (
+              <span className="text-blue-600">Kurlar alınamadı</span>
+            )}
+          </>
+        )}
+        <span className="ml-auto text-xs text-blue-500 hidden sm:inline">
+          Otomatik olarak formda kullanılır
+        </span>
+      </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
