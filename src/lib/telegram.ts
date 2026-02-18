@@ -188,8 +188,9 @@ class TelegramService {
                         evrak.durum === 'karsiliksiz' ? 'Karşılıksız' : evrak.durum;
 
       // Uygulama URL'si (ortam değişkeninden)
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.URL || process.env.DEPLOY_URL || 'http://localhost:3000';
       const evrakUrl = `${baseUrl}/evraklar/${evrak.id}`;
+      console.log('Telegram evrak URL:', { baseUrl, evrakUrl, env: process.env.NEXT_PUBLIC_APP_URL });
 
       const replacements: Record<string, string> = {
         '{evrak_tipi}': evrakTipiLabel,
