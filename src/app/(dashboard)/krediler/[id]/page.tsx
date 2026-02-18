@@ -170,7 +170,7 @@ function StatCard({ title, value, icon, color = 'default' }: StatCardProps) {
           {icon}
         </div>
         <div>
-          <Text className="text-sm text-zinc-500">{title}</Text>
+          <Text className="text-sm font-semibold text-blue-600">{title}</Text>
           <Text className="text-lg font-semibold text-zinc-900">{value}</Text>
         </div>
       </div>
@@ -721,7 +721,7 @@ export default function KrediDetayPage() {
                 {getKrediDurumLabel(kredi.durum)}
               </Badge>
             </div>
-            <Text className="mt-1">
+            <Text className="mt-1 font-semibold text-blue-700">
               {KREDI_TURU_LABELS[kredi.kredi_turu]} • {formatCurrency(kredi.anapara, kredi.para_birimi)}
             </Text>
           </div>
@@ -815,32 +815,32 @@ export default function KrediDetayPage() {
 
       {/* Kredi Bilgileri & Progress */}
       <div className="rounded-lg border border-zinc-200 bg-white p-6">
-        <Heading level={2} className="text-lg">Kredi Özeti</Heading>
+        <Heading level={2} className="text-lg font-bold text-blue-800">Kredi Özeti</Heading>
         <Divider className="my-4" />
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div>
-            <Text className="text-xs text-zinc-500">Faiz Oranı</Text>
+            <Text className="text-xs font-semibold text-blue-600">Faiz Oranı</Text>
             <Text className="font-medium">%{kredi.faiz_orani.toFixed(2)}</Text>
           </div>
           <div>
-            <Text className="text-xs text-zinc-500">Vade</Text>
+            <Text className="text-xs font-semibold text-blue-600">Vade</Text>
             <Text className="font-medium">{kredi.vade_ay} ay</Text>
           </div>
           <div>
-            <Text className="text-xs text-zinc-500">Aylık Taksit</Text>
+            <Text className="text-xs font-semibold text-blue-600">Aylık Taksit</Text>
             <Text className="font-medium">{formatCurrency(kredi.aylik_taksit, kredi.para_birimi)}</Text>
           </div>
           <div>
-            <Text className="text-xs text-zinc-500">Başlangıç</Text>
+            <Text className="text-xs font-semibold text-blue-600">Başlangıç</Text>
             <Text className="font-medium">{formatDate(kredi.baslangic_tarihi)}</Text>
           </div>
           <div>
-            <Text className="text-xs text-zinc-500">Bitiş (Tahmini)</Text>
+            <Text className="text-xs font-semibold text-blue-600">Bitiş (Tahmini)</Text>
             <Text className="font-medium">{formatDate(getBitisTarihi(kredi.baslangic_tarihi, kredi.vade_ay))}</Text>
           </div>
           <div>
-            <Text className="text-xs text-zinc-500">Toplam Faiz</Text>
+            <Text className="text-xs font-semibold text-green-600">Toplam Faiz</Text>
             <Text className="font-medium">{formatCurrency(kredi.toplam_odeme - kredi.anapara, kredi.para_birimi)}</Text>
           </div>
         </div>
@@ -876,7 +876,7 @@ export default function KrediDetayPage() {
       {/* Taksit Tablosu */}
       <div className="rounded-lg border border-zinc-200 bg-white p-6">
         <div className="flex items-center justify-between">
-          <Heading level={2} className="text-lg">
+          <Heading level={2} className="text-lg font-bold text-blue-800">
             Taksitler
             <span className="ml-2 text-sm font-normal text-zinc-500">
               ({kredi.taksitler.length} adet)
