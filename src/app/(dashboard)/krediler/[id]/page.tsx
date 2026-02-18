@@ -41,6 +41,7 @@ import {
   CurrencyDollarIcon,
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/20/solid'
 import {
   formatCurrency,
@@ -217,6 +218,11 @@ export default function KrediDetayPage() {
   const [isWhatsAppSending, setIsWhatsAppSending] = useState(false)
   const [whatsAppError, setWhatsAppError] = useState<string | null>(null)
   const [whatsAppSuccess, setWhatsAppSuccess] = useState<string | null>(null)
+
+  // Telegram gönderim state
+  const [isTelegramSending, setIsTelegramSending] = useState(false)
+  const [telegramError, setTelegramError] = useState<string | null>(null)
+  const [telegramSuccess, setTelegramSuccess] = useState<string | null>(null)
 
   // ============================================
   // Data Fetching
@@ -439,6 +445,54 @@ export default function KrediDetayPage() {
   }
 
   // ============================================
+  // Telegram Gönderimi
+  // ============================================
+
+  const handleSendTelegramMessage = async () => {
+    if (!kredi) return
+
+    setIsTelegramSending(true)
+    setTelegramError(null)
+    setTelegramSuccess(null)
+
+    try {
+      // Mesaj içeriği
+      const message = `*Kredi Bilgileri*\n` +
+        `Banka: ${kredi.banka?.ad || 'Belirtilmemiş'}\n` +
+        `Kredi Türü: ${KREDI_TURU_LABELS[kredi.kredi_turu] || kredi.kredi_turu}\n` +
+        `Anapara: ${formatCurrency(kredi.anapara, kredi.para_birimi)}\n` +
+        `Toplam Ödeme: ${formatCurrency(kredi.toplam_odeme, kredi.para_birimi)}\n` +
+        `Kalan Borç: ${formatCurrency(kredi.ozet.kalan_borc, kredi.para_birimi)}\n` +
+        `Geciken Taksit: ${kredi.ozet.geciken_taksit} adet\n` +
+        `Durum: ${getKrediDurumLabel(kredi.durum)}`
+
+      const response = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customMessage: message,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Telegram mesajı gönderilemedi.')
+      }
+
+      setTelegramSuccess('Telegram mesajı başarıyla gönderildi.')
+      setTimeout(() => {
+        setTelegramSuccess(null)
+        setIsTelegramSending(false)
+      }, 3000)
+
+    } catch (err) {
+      setTelegramError(err instanceof Error ? err.message : 'Telegram mesajı gönderilemedi.')
+      setIsTelegramSending(false)
+    }
+  }
+
+  // ============================================
   // Email Gönderimi (Server-side / SMTP)
   // ============================================
 
@@ -615,6 +669,20 @@ export default function KrediDetayPage() {
         </div>
       )}
 
+      {/* Telegram Messages */}
+      {telegramSuccess && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          <CheckCircleIcon className="h-5 w-5" />
+          {telegramSuccess}
+        </div>
+      )}
+      {telegramError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <ExclamationTriangleIcon className="h-5 w-5" />
+          {telegramError}
+        </div>
+      )}
+
       {/* Email Messages */}
       {emailSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
@@ -666,6 +734,19 @@ export default function KrediDetayPage() {
               <ChatBubbleLeftRightIcon className="h-6 w-6" />
             )}
             WhatsApp
+          </Button>
+          <Button
+            color="purple"
+            onClick={handleSendTelegramMessage}
+            disabled={isTelegramSending}
+            className="shadow-md hover:shadow-lg transition-shadow"
+          >
+            {isTelegramSending ? (
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
+            ) : (
+              <PaperAirplaneIcon className="h-6 w-6" />
+            )}
+            Telegram
           </Button>
           <Button
             color="blue"
