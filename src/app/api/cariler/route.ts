@@ -115,8 +115,7 @@ export async function POST(request: NextRequest) {
         email: body.email?.trim() || null,
         adres: body.adres?.trim() || null,
         vergi_no: body.vergi_no?.trim() || null,
-        notlar: body.notlar?.trim() || null,
-        created_by: user.id
+        notlar: body.notlar?.trim() || null
       })
       .select()
       .single()

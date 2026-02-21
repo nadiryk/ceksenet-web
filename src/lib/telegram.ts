@@ -116,16 +116,24 @@ class TelegramService {
         messageId: message.message_id,
       };
     } catch (error: any) {
-      const errorMsg = error?.message || 'Bilinmeyen hata';
+      let errorMsg = error?.message || 'Bilinmeyen hata';
       console.error('Telegram mesaj gönderimi hatası:', error);
 
-      // Hata logu
+      // Hata mesajını analiz et ve kullanıcı dostu hale getir
+      if (errorMsg.includes('403 Forbidden: the group chat was deleted')) {
+        errorMsg = 'Telegram sohbet grubu silinmiş veya bot gruptan çıkarılmış. Lütfen Chat ID\'yi güncelleyin ve botun grupta olduğundan emin olun.';
+      } else if (errorMsg.includes('ETELEGRAM:')) {
+        // ETELEGRAM önekini kaldır
+        errorMsg = errorMsg.replace('ETELEGRAM:', '').trim();
+      }
+
+      // Hata logu (orijinal hata mesajını kaydet)
       await this.logMessage(
         options?.chatId || this.defaultChatId || '',
         text,
         'hata',
         undefined,
-        errorMsg
+        error?.message || errorMsg
       );
 
       return {
